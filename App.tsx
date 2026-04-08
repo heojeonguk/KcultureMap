@@ -4,13 +4,8 @@ import {
   ActivityIndicator, StyleSheet, Modal,
   Linking, TextInput, Alert, SafeAreaView, Image
 } from 'react-native'
-import { createClient } from '@supabase/supabase-js'
 import * as ImagePicker from 'expo-image-picker'
-
-const supabase = createClient(
-  'https://zmukgjwdrorgprxzqlka.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdWtnandkcm9yZ3ByeHpxbGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTM1NTcsImV4cCI6MjA5MDk2OTU1N30.wkvf9hPPoWfP6d9L-kF8p11V4yq0tKwngypwzcvuEzA'
-)
+import { supabase } from './lib/supabase'
 
 const LANGS: any = {
   ko:{ flag:'🇰🇷', name:'한국어',
@@ -295,21 +290,71 @@ export default function App() {
   }
   
   async function deletePost(postId:string) {
-    Alert.alert('','정말 삭제하시겠습니까?',[{text:'취소',onPress:()=>{},style:'cancel'},{text:'삭제',onPress:()=>confirmDelete(postId),style:'destructive'}])
+    Alert.alert(
+      lang === 'ko' ? '게시글 삭제' : lang === 'en' ? 'Delete Post' : '게시글 삭제',
+      lang === 'ko' ? '이 게시글을 정말 삭제하시겠습니까?\n삭제된 게시글은 복구할 수 없습니다.' : 
+      lang === 'en' ? 'Are you sure you want to delete this post?\nDeleted posts cannot be recovered.' :
+      '이 게시글을 정말 삭제하시겠습니까?\n삭제된 게시글은 복구할 수 없습니다.',
+      [
+        {text:lang==='ko'?'취소':lang==='en'?'Cancel':'취소', onPress:()=>{}, style:'cancel'},
+        {text:lang==='ko'?'삭제':lang==='en'?'Delete':lang==='zh'?'刪除':lang==='ja'?'削除':lang==='tw'?'刪除':lang==='th'?'ลบ':lang==='vi'?'Xóa':lang==='id'?'Hapus':lang==='ms'?'Padam':lang==='es'?'Eliminar':lang==='fr'?'Supprimer':lang==='de'?'Löschen':lang==='pt'?'Excluir':lang==='ru'?'Удалить':lang==='ar'?'حذف':'삭제', onPress:()=>confirmDelete(postId), style:'destructive'}
+      ]
+    )
   }
   
   async function confirmDelete(postId:string) {
-    setPostSubmitting(true)
-    const {error} = await supabase.from('posts').delete().eq('id',postId)
-    if(!error) {
-      if(selectedPost?.id===postId) setSelectedPost(null)
-      await loadPosts()
-      await loadMyData()
-      Alert.alert('✅','게시글이 삭제되었습니다!')
-    } else {
-      Alert.alert('오류','삭제에 실패했습니다')
+    try {
+      setPostSubmitting(true)
+      console.log('🗑️ Starting delete for post:', postId)
+      
+      // 먼저 게시글이 존재하는지 확인
+      const { data: existingPost, error: fetchError } = await supabase
+        .from('posts')
+        .select('id, title')
+        .eq('id', postId)
+        .single()
+      
+      if (fetchError || !existingPost) {
+        console.error('❌ Post not found:', fetchError)
+        Alert.alert(lang==='ko'?'오류':lang==='en'?'Error':'오류', lang==='ko'?'게시글을 찾을 수 없습니다':lang==='en'?'Post not found':'게시글을 찾을 수 없습니다')
+        return
+      }
+      
+      console.log('✅ Post found, proceeding with delete:', existingPost.title)
+      
+      const {error, data} = await supabase.from('posts').delete().eq('id', postId)
+      
+      console.log('🗑️ Delete result:', {error, data, postId})
+      
+      if(!error) {
+        console.log('✅ Delete successful')
+        
+        // 현재 선택된 게시글이 삭제된 게시글이라면 닫기
+        if(selectedPost?.id === postId) {
+          setSelectedPost(null)
+        }
+        
+        // 게시글 목록 새로고침
+        await loadPosts()
+        await loadMyData()
+        
+        Alert.alert('✅', lang==='ko'?'게시글이 성공적으로 삭제되었습니다!':lang==='en'?'Post deleted successfully!':'게시글이 성공적으로 삭제되었습니다!')
+      } else {
+        console.error('❌ Delete error:', error)
+        Alert.alert(
+          lang==='ko'?'삭제 실패':lang==='en'?'Delete Failed':'삭제 실패', 
+          `${lang==='ko'?'삭제 중 오류가 발생했습니다':lang==='en'?'An error occurred while deleting':'삭제 중 오류가 발생했습니다'}\n\n${error.message || 'Unknown error'}`
+        )
+      }
+    } catch(e) {
+      console.error('❌ Delete exception:', e)
+      Alert.alert(
+        lang==='ko'?'오류':lang==='en'?'Error':'오류', 
+        lang==='ko'?'삭제 중 예기치 않은 오류가 발생했습니다':lang==='en'?'An unexpected error occurred while deleting':'삭제 중 예기치 않은 오류가 발생했습니다'
+      )
+    } finally {
+      setPostSubmitting(false)
     }
-    setPostSubmitting(false)
   }
   
   async function pickEditImage() {
@@ -672,8 +717,24 @@ export default function App() {
                     </View>
                   </TouchableOpacity>
                   <View style={{flexDirection:'row',gap:8,marginTop:10,borderTopWidth:1,borderTopColor:'#eee',paddingTop:10}}>
-                    <TouchableOpacity style={[s.myPostActionBtn,{flex:1,backgroundColor:'#f0f4ff'}]} onPress={()=>openEditModal(post)}><Text style={{color:'#1565C0',fontWeight:'700',fontSize:12}}>✏️ 수정</Text></TouchableOpacity>
-                    <TouchableOpacity style={[s.myPostActionBtn,{flex:1,backgroundColor:'#fff5f5'}]} onPress={()=>deletePost(post.id)}><Text style={{color:'#C8102E',fontWeight:'700',fontSize:12}}>🗑 삭제</Text></TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[s.myPostActionBtn,{flex:1,backgroundColor:'#f0f4ff'}]} 
+                      onPress={()=>openEditModal(post)}
+                      disabled={postSubmitting}
+                    >
+                      <Text style={{color:'#1565C0',fontWeight:'700',fontSize:12}}>✏️ 수정</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[s.myPostActionBtn,{flex:1,backgroundColor:'#fff5f5'}]} 
+                      onPress={()=>deletePost(post.id)}
+                      disabled={postSubmitting}
+                    >
+                      {postSubmitting ? (
+                        <ActivityIndicator size="small" color="#C8102E"/>
+                      ) : (
+                        <Text style={{color:'#C8102E',fontWeight:'700',fontSize:12}}>🗑 삭제</Text>
+                      )}
+                    </TouchableOpacity>
                   </View>
                 </View>
               ))}
@@ -807,8 +868,24 @@ export default function App() {
                     </TouchableOpacity>
                     {selectedPost.user_name==='나'&&(
                       <>
-                        <TouchableOpacity style={[s.translateBtn,{backgroundColor:'#f0f4ff'}]} onPress={()=>openEditModal(selectedPost)}><Text style={{color:'#1565C0',fontWeight:'600',fontSize:11}}>✏️ 수정</Text></TouchableOpacity>
-                        <TouchableOpacity style={[s.translateBtn,{backgroundColor:'#fff5f5'}]} onPress={()=>deletePost(selectedPost.id)}><Text style={{color:'#C8102E',fontWeight:'600',fontSize:11}}>🗑 삭제</Text></TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[s.translateBtn,{backgroundColor:'#f0f4ff'}]} 
+                          onPress={()=>openEditModal(selectedPost)}
+                          disabled={postSubmitting}
+                        >
+                          <Text style={{color:'#1565C0',fontWeight:'600',fontSize:11}}>✏️ 수정</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[s.translateBtn,{backgroundColor:'#fff5f5'}]} 
+                          onPress={()=>deletePost(selectedPost.id)}
+                          disabled={postSubmitting}
+                        >
+                          {postSubmitting ? (
+                            <ActivityIndicator size="small" color="#C8102E"/>
+                          ) : (
+                            <Text style={{color:'#C8102E',fontWeight:'600',fontSize:11}}>🗑 삭제</Text>
+                          )}
+                        </TouchableOpacity>
                       </>
                     )}
                   </View>
