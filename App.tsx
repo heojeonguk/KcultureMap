@@ -296,13 +296,11 @@ export default function App() {
   
   async function deletePost(postId:string) {
     Alert.alert(
-      lang === 'ko' ? '게시글 삭제' : lang === 'en' ? 'Delete Post' : '게시글 삭제',
-      lang === 'ko' ? '이 게시글을 정말 삭제하시겠습니까?\n삭제된 게시글은 복구할 수 없습니다.' : 
-      lang === 'en' ? 'Are you sure you want to delete this post?\nDeleted posts cannot be recovered.' :
-      '이 게시글을 정말 삭제하시겠습니까?\n삭제된 게시글은 복구할 수 없습니다.',
+      '게시글 삭제',
+      '정말 삭제하시겠습니까?',
       [
-        {text:lang==='ko'?'취소':lang==='en'?'Cancel':'취소', onPress:()=>{}, style:'cancel'},
-        {text:lang==='ko'?'삭제':lang==='en'?'Delete':lang==='zh'?'刪除':lang==='ja'?'削除':lang==='tw'?'刪除':lang==='th'?'ลบ':lang==='vi'?'Xóa':lang==='id'?'Hapus':lang==='ms'?'Padam':lang==='es'?'Eliminar':lang==='fr'?'Supprimer':lang==='de'?'Löschen':lang==='pt'?'Excluir':lang==='ru'?'Удалить':lang==='ar'?'حذف':'삭제', onPress:()=>confirmDelete(postId), style:'destructive'}
+        {text:'취소', onPress:()=>{}, style:'cancel'},
+        {text:'삭제', onPress:()=>confirmDelete(postId), style:'destructive'}
       ]
     )
   }
@@ -319,9 +317,11 @@ export default function App() {
         .eq('id', postId)
         .single()
       
+      console.log('🔍 Post lookup result:', { existingPost, fetchError })
+      
       if (fetchError || !existingPost) {
         console.error('❌ Post not found:', fetchError)
-        Alert.alert(lang==='ko'?'오류':lang==='en'?'Error':'오류', lang==='ko'?'게시글을 찾을 수 없습니다':lang==='en'?'Post not found':'게시글을 찾을 수 없습니다')
+        Alert.alert('오류', '게시글을 찾을 수 없습니다')
         return
       }
       
@@ -329,7 +329,8 @@ export default function App() {
       
       const {error, data} = await supabase.from('posts').delete().eq('id', postId)
       
-      console.log('🗑️ Delete result:', {error, data, postId})
+      console.log('🗑️ Delete operation result:', { error, data, postId })
+      console.log('🗑️ Error details:', error)
       
       if(!error) {
         console.log('✅ Delete successful')
@@ -343,20 +344,14 @@ export default function App() {
         await loadPosts()
         await loadMyData()
         
-        Alert.alert('✅', lang==='ko'?'게시글이 성공적으로 삭제되었습니다!':lang==='en'?'Post deleted successfully!':'게시글이 성공적으로 삭제되었습니다!')
+        Alert.alert('✅', '게시글이 성공적으로 삭제되었습니다!')
       } else {
         console.error('❌ Delete error:', error)
-        Alert.alert(
-          lang==='ko'?'삭제 실패':lang==='en'?'Delete Failed':'삭제 실패', 
-          `${lang==='ko'?'삭제 중 오류가 발생했습니다':lang==='en'?'An error occurred while deleting':'삭제 중 오류가 발생했습니다'}\n\n${error.message || 'Unknown error'}`
-        )
+        Alert.alert('삭제 실패', `삭제 중 오류가 발생했습니다: ${error.message}`)
       }
     } catch(e) {
       console.error('❌ Delete exception:', e)
-      Alert.alert(
-        lang==='ko'?'오류':lang==='en'?'Error':'오류', 
-        lang==='ko'?'삭제 중 예기치 않은 오류가 발생했습니다':lang==='en'?'An unexpected error occurred while deleting':'삭제 중 예기치 않은 오류가 발생했습니다'
-      )
+      Alert.alert('오류', '삭제 중 예기치 않은 오류가 발생했습니다')
     } finally {
       setPostSubmitting(false)
     }
@@ -386,30 +381,22 @@ export default function App() {
     setEditPhotoUploading(false)
   }
 
-  const REGION_CITY_MAP: any = {
-    강원: ['강릉','속초','춘천','원주','평창','태백'],
-    경상: ['대구','경주','포항','안동','창원','진주','울산'],
-    전라: ['광주','전주','여수','순천','목포'],
-    충청: ['대전','청주','천안'],
-  }
-
   async function loadPlaces() {
     setLoading(true)
     let q = supabase.from('places').select('*')
-    const cities = REGION_CITY_MAP[selectedRegion.id]
-    if(selectedRegion.id !== 'all' && selectedDistrict === '전체') {
-      if(cities) {
-        q = q.in('city', cities)
+    
+    // 지역 필터링: address 컬럼에 포함된 텍스트로 검색
+    if(selectedRegion.id !== 'all') {
+      if(selectedDistrict === '전체') {
+        // 광역시도 선택 시 (강원, 경상 등)
+        q = q.ilike('address', `%${selectedRegion.id}%`)
       } else {
-        q = q.eq('city', selectedRegion.id)
-      }
-    } else if(selectedRegion.id !== 'all' && selectedDistrict !== '전체') {
-      // 지역별 전체 필터는 이미 선택된 동네로 충분히 좁혀집니다.
-      if(!cities) {
-        q = q.eq('city', selectedRegion.id)
+        // 세부지역 선택 시 (속초, 강릉 등 또는 강남/역삼/삼성 등)
+        const districtKey = selectedDistrict.split('/')[0].trim() // '강남/역삼/삼성' → '강남'
+        q = q.ilike('address', `%${districtKey}%`)
       }
     }
-    if(selectedDistrict !== '전체') q = q.eq('district', selectedDistrict)
+    
     const catBase = selectedCat.split('_')[0]
     if(selectedCat !== 'all') q = q.eq('category', catBase)
     if(searchText.trim()) q = q.ilike('name', `%${searchText}%`)
