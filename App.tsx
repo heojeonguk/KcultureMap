@@ -211,8 +211,35 @@ export default function App() {
   const [tempRegion, setTempRegion] = useState(REGION_DATA[0])
   const [translations, setTranslations] = useState<{[key:string]:string}>({})
   const [translating, setTranslating] = useState<{[key:string]:boolean}>({})
+  const [editingPost, setEditingPost] = useState<any>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editContent, setEditContent] = useState('')
+  const [editCity, setEditCity] = useState('')
+  const [editCategory, setEditCategory] = useState('free')
+  const [editPhoto, setEditPhoto] = useState<string | null>(null)
+  const [editPhotoUploading, setEditPhotoUploading] = useState(false)
   const mauCount = 247; const mauGoal = 5000
   const L = LANGS[lang] || LANGS['ko']
+  
+  const editDeleteTexts: any = {
+    ko: { edit: '수정', delete: '삭제', deleteConfirm: '정말 삭제하시겠습니까?', deleting: '삭제 중...', editing: '수정 중...' },
+    en: { edit: 'Edit', delete: 'Delete', deleteConfirm: 'Delete this post?', deleting: 'Deleting...', editing: 'Updating...' },
+    zh: { edit: '編輯', delete: '刪除', deleteConfirm: '確定刪除？', deleting: '刪除中...', editing: '更新中...' },
+    ja: { edit: '編集', delete: '削除', deleteConfirm: '削除しますか？', deleting: '削除中...', editing: '更新中...' },
+    tw: { edit: '編輯', delete: '刪除', deleteConfirm: '確定刪除？', deleting: '刪除中...', editing: '更新中...' },
+    th: { edit: 'แก้ไข', delete: 'ลบ', deleteConfirm: 'ลบโพสต์นี้?', deleting: 'กำลังลบ...', editing: 'กำลังอัปเดต...' },
+    vi: { edit: 'Chỉnh sửa', delete: 'Xóa', deleteConfirm: 'Xóa bài này?', deleting: 'Đang xóa...', editing: 'Đang cập nhật...' },
+    id: { edit: 'Edit', delete: 'Hapus', deleteConfirm: 'Apakah Anda ingin menghapus?', deleting: 'Menghapus...', editing: 'Memperbarui...' },
+    ms: { edit: 'Edit', delete: 'Padam', deleteConfirm: 'Padam pos ini?', deleting: 'Memadamkan...', editing: 'Mengemaskini...' },
+    es: { edit: 'Editar', delete: 'Eliminar', deleteConfirm: '¿Eliminar este post?', deleting: 'Eliminando...', editing: 'Actualizando...' },
+    fr: { edit: 'Modifier', delete: 'Supprimer', deleteConfirm: 'Supprimer ce post?', deleting: 'Suppression...', editing: 'Mise à jour...' },
+    de: { edit: 'Bearbeiten', delete: 'Löschen', deleteConfirm: 'Diesen Post löschen?', deleting: 'Wird gelöscht...', editing: 'Wird aktualisiert...' },
+    pt: { edit: 'Editar', delete: 'Excluir', deleteConfirm: 'Excluir este post?', deleting: 'Excluindo...', editing: 'Atualizando...' },
+    ru: { edit: 'Редактировать', delete: 'Удалить', deleteConfirm: 'Удалить этот пост?', deleting: 'Удаление...', editing: 'Обновление...' },
+    ar: { edit: 'تحرير', delete: 'حذف', deleteConfirm: 'حذف هذا المنشور؟', deleting: 'جاري الحذف...', editing: 'جاري التحديث...' },
+  }
+  const editBtn = editDeleteTexts[lang] || editDeleteTexts['ko']
 
   const CAT_GROUPS = [
     { label:'', items:[{ key:'all', label:L.cat_all, color:'#0D1B2A' }] },
@@ -226,6 +253,88 @@ export default function App() {
   useEffect(() => { loadPlaces() }, [selectedRegion, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
   useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
+
+  const openEditModal = (post:any) => {
+    setEditingPost(post)
+    setEditTitle(post.title)
+    setEditContent(post.content)
+    setEditCity(post.city || '')
+    setEditCategory(post.category)
+    setEditPhoto(post.photo_url)
+    setShowEditModal(true)
+  }
+  
+  const closeEditModal = () => {
+    setShowEditModal(false)
+    setEditingPost(null)
+    setEditTitle('')
+    setEditContent('')
+    setEditCity('')
+    setEditCategory('free')
+    setEditPhoto(null)
+  }
+  
+  async function updatePost() {
+    if(!editTitle.trim()) { Alert.alert('','제목을 입력해주세요'); return }
+    if(!editContent.trim()) { Alert.alert('','내용을 입력해주세요'); return }
+    setPostSubmitting(true)
+    const {error} = await supabase.from('posts').update({
+      title:editTitle.trim(),
+      content:editContent.trim(),
+      city:editCity.trim()||null,
+      category:editCategory,
+      photo_url: editPhoto || null,
+    }).eq('id',editingPost.id)
+    if(!error) {
+      closeEditModal()
+      await loadPosts()
+      await loadMyData()
+      Alert.alert('✅','게시글이 수정되었습니다!')
+    }
+    setPostSubmitting(false)
+  }
+  
+  async function deletePost(postId:string) {
+    Alert.alert('','정말 삭제하시겠습니까?',[{text:'취소',onPress:()=>{},style:'cancel'},{text:'삭제',onPress:()=>confirmDelete(postId),style:'destructive'}])
+  }
+  
+  async function confirmDelete(postId:string) {
+    setPostSubmitting(true)
+    const {error} = await supabase.from('posts').delete().eq('id',postId)
+    if(!error) {
+      if(selectedPost?.id===postId) setSelectedPost(null)
+      await loadPosts()
+      await loadMyData()
+      Alert.alert('✅','게시글이 삭제되었습니다!')
+    } else {
+      Alert.alert('오류','삭제에 실패했습니다')
+    }
+    setPostSubmitting(false)
+  }
+  
+  async function pickEditImage() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if(!perm.granted) { Alert.alert('','사진 접근 권한이 필요합니다'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, aspect:[4,3], quality:0.7,
+    })
+    if(result.canceled) return
+    const uri = result.assets[0].uri
+    setEditPhotoUploading(true)
+    try {
+      const fileName = `post_${Date.now()}.jpg`
+      const response = await fetch(uri)
+      const blob = await response.blob()
+      const {error} = await supabase.storage.from('community-photos').upload(fileName, blob, { contentType:'image/jpeg', upsert:true })
+      if(error) throw error
+      const {data} = supabase.storage.from('community-photos').getPublicUrl(fileName)
+      setEditPhoto(data.publicUrl)
+    } catch(e) {
+      Alert.alert('오류','사진 업로드에 실패했습니다')
+    }
+    setEditPhotoUploading(false)
+  }
 
   async function loadPlaces() {
     setLoading(true)
@@ -553,14 +662,20 @@ export default function App() {
             <View style={{padding:16}}>
               <Text style={s.sectionTitle}>✏️ {L.my_posts}</Text>
               {myPosts.length===0?<Text style={s.emptyText}>{L.no_posts}</Text>:myPosts.map((post:any)=>(
-                <TouchableOpacity key={post.id} style={s.myPostCard} onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
-                  {post.photo_url&&<Image source={{uri:post.photo_url}} style={s.myPostImg} resizeMode="cover"/>}
-                  <Text style={s.myPostTitle}>{post.title}</Text>
-                  <View style={{flexDirection:'row',justifyContent:'space-between',marginTop:6}}>
-                    <Text style={s.myPostMeta}>{post.city||'전체'} · {timeAgo(post.created_at)}</Text>
-                    <Text style={s.myPostLikes}>👍 {post.likes}</Text>
+                <View key={post.id} style={s.myPostCard}>
+                  <TouchableOpacity onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
+                    {post.photo_url&&<Image source={{uri:post.photo_url}} style={s.myPostImg} resizeMode="cover"/>}
+                    <Text style={s.myPostTitle}>{post.title}</Text>
+                    <View style={{flexDirection:'row',justifyContent:'space-between',marginTop:6}}>
+                      <Text style={s.myPostMeta}>{post.city||'전체'} · {timeAgo(post.created_at)}</Text>
+                      <Text style={s.myPostLikes}>👍 {post.likes}</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <View style={{flexDirection:'row',gap:8,marginTop:10,borderTopWidth:1,borderTopColor:'#eee',paddingTop:10}}>
+                    <TouchableOpacity style={[s.myPostActionBtn,{flex:1,backgroundColor:'#f0f4ff'}]} onPress={()=>openEditModal(post)}><Text style={{color:'#1565C0',fontWeight:'700',fontSize:12}}>✏️ 수정</Text></TouchableOpacity>
+                    <TouchableOpacity style={[s.myPostActionBtn,{flex:1,backgroundColor:'#fff5f5'}]} onPress={()=>deletePost(post.id)}><Text style={{color:'#C8102E',fontWeight:'700',fontSize:12}}>🗑 삭제</Text></TouchableOpacity>
                   </View>
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           </ScrollView>
@@ -618,6 +733,48 @@ export default function App() {
           </SafeAreaView>
         </Modal>
 
+        {/* 게시글 수정 모달 */}
+        <Modal visible={showEditModal} animationType="slide" onRequestClose={closeEditModal}>
+          <SafeAreaView style={{flex:1,backgroundColor:'#F8F5F0'}}>
+            <View style={s.writeModalHeader}>
+              <TouchableOpacity onPress={closeEditModal}><Text style={{fontSize:20,color:'#666'}}>✕</Text></TouchableOpacity>
+              <Text style={s.writeModalTitle}>✏️ 게시글 수정</Text>
+              <TouchableOpacity onPress={updatePost} disabled={postSubmitting}><Text style={[s.writeModalSubmit,postSubmitting&&{opacity:0.5}]}>{postSubmitting?editBtn.editing:'완료'}</Text></TouchableOpacity>
+            </View>
+            <ScrollView style={{padding:16}}>
+              <View style={s.postCatRow}>
+                {[{k:'food',label:L.food_post},{k:'spot',label:L.spot_post},{k:'cafe',label:L.cafe_post},{k:'free',label:L.free_post}].map(c=>(
+                  <TouchableOpacity key={c.k} style={[s.postCatBtn,editCategory===c.k&&s.postCatBtnActive]} onPress={()=>setEditCategory(c.k)}>
+                    <Text style={[s.postCatText,editCategory===c.k&&s.postCatTextActive]}>{c.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput style={s.writeTitleInput} placeholder={L.post_title} value={editTitle} onChangeText={setEditTitle} placeholderTextColor="#bbb"/>
+              <TextInput style={s.writeCityInput} placeholder={L.post_city} value={editCity} onChangeText={setEditCity} placeholderTextColor="#bbb"/>
+
+              {/* 사진 변경 버튼 */}
+              <TouchableOpacity style={s.addPhotoBtn} onPress={pickEditImage} disabled={editPhotoUploading}>
+                {editPhotoUploading
+                  ? <ActivityIndicator size="small" color="#C8102E"/>
+                  : <Text style={s.addPhotoBtnText}>📷 {L.add_photo}</Text>
+                }
+              </TouchableOpacity>
+
+              {/* 사진 미리보기 */}
+              {editPhoto&&(
+                <View style={{marginBottom:12,position:'relative'}}>
+                  <Image source={{uri:editPhoto}} style={s.photoPreview} resizeMode="cover"/>
+                  <TouchableOpacity style={s.removePhotoBtn} onPress={()=>setEditPhoto(null)}>
+                    <Text style={{color:'#fff',fontSize:14,fontWeight:'700'}}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <TextInput style={s.writeContentInput} placeholder={L.post_content} value={editContent} onChangeText={setEditContent} multiline placeholderTextColor="#bbb"/>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
         {/* 게시글 상세 모달 */}
         <Modal visible={!!selectedPost} animationType="slide" onRequestClose={()=>{setSelectedPost(null);setReplyTo(null)}}>
           {selectedPost&&(
@@ -643,11 +800,17 @@ export default function App() {
                   {/* 상세 이미지 */}
                   {selectedPost.photo_url&&<Image source={{uri:selectedPost.photo_url}} style={s.postDetailImg} resizeMode="cover"/>}
                   <Text style={s.postDetailContent}>{selectedPost.content}</Text>
-                  <View style={{flexDirection:'row',gap:10,marginTop:12}}>
+                  <View style={{flexDirection:'row',gap:10,marginTop:12,flexWrap:'wrap'}}>
                     <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(selectedPost)}><Text style={s.likeBtnText}>👍 {L.likes} {selectedPost.likes}</Text></TouchableOpacity>
                     <TouchableOpacity style={s.translateBtn} onPress={()=>translateText(`detail_${selectedPost.id}`,selectedPost.title+'\n'+selectedPost.content)}>
                       <Text style={s.translateBtnText}>{translating[`detail_${selectedPost.id}`]?L.translating:`🌐 ${L.translate}`}</Text>
                     </TouchableOpacity>
+                    {selectedPost.user_name==='나'&&(
+                      <>
+                        <TouchableOpacity style={[s.translateBtn,{backgroundColor:'#f0f4ff'}]} onPress={()=>openEditModal(selectedPost)}><Text style={{color:'#1565C0',fontWeight:'600',fontSize:11}}>✏️ 수정</Text></TouchableOpacity>
+                        <TouchableOpacity style={[s.translateBtn,{backgroundColor:'#fff5f5'}]} onPress={()=>deletePost(selectedPost.id)}><Text style={{color:'#C8102E',fontWeight:'600',fontSize:11}}>🗑 삭제</Text></TouchableOpacity>
+                      </>
+                    )}
                   </View>
                   {translations[`detail_${selectedPost.id}`]&&<View style={s.translatedBox}><Text style={s.translatedText}>{translations[`detail_${selectedPost.id}`]}</Text></View>}
                 </View>
@@ -1008,6 +1171,7 @@ const s = StyleSheet.create({
   myPostTitle:{fontSize:14,fontWeight:'700',color:'#0D1B2A'},
   myPostMeta:{fontSize:11,color:'#aaa'},
   myPostLikes:{fontSize:11,color:'#1565C0',fontWeight:'600'},
+  myPostActionBtn:{borderRadius:8,paddingVertical:8,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#eee'},
   sectionTitle:{fontSize:16,fontWeight:'700',color:'#0D1B2A',marginBottom:12},
   regionModalSafe:{flex:1,backgroundColor:'#fff'},
   regionModalHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderBottomColor:'#eee'},
