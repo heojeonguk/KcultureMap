@@ -1,0 +1,1088 @@
+import React, { useEffect, useState, useCallback } from 'react'
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  ActivityIndicator, StyleSheet, Modal,
+  Linking, TextInput, Alert, SafeAreaView, Image
+} from 'react-native'
+import { createClient } from '@supabase/supabase-js'
+import * as ImagePicker from 'expo-image-picker'
+
+const supabase = createClient(
+  'https://zmukgjwdrorgprxzqlka.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdWtnandkcm9yZ3ByeHpxbGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTM1NTcsImV4cCI6MjA5MDk2OTU1N30.wkvf9hPPoWfP6d9L-kF8p11V4yq0tKwngypwzcvuEzA'
+)
+
+const LANGS: any = {
+  ko:{ flag:'🇰🇷', name:'한국어',
+    search:'장소, 도시, 음식 검색...', open:'영업중', closed:'영업종료',
+    hours:'운영시간', price:'입장료/가격', review:'리뷰', writeReview:'리뷰 작성',
+    submit:'등록', saving:'저장', nav_explore:'탐색', nav_ai:'AI추천',
+    nav_community:'커뮤니티', nav_me:'나',
+    mau:'목표까지', featured:'인기 추천', all_list:'전체 목록', route:'길찾기',
+    subway:'지하철', bus:'버스', taxi:'택시', walk:'도보',
+    time:'시간', dist:'거리', fare:'요금', open_map:'Google Maps로 열기',
+    region_select:'지역 선택', all_region:'전체',
+    community_title:'여행자 커뮤니티', community_sub:'로컬 맛집·숨은 명소 공유',
+    write_post:'글 쓰기', best:'베스트', latest:'최신',
+    food_post:'맛집', spot_post:'명소', cafe_post:'카페', free_post:'자유',
+    likes:'추천', comments:'댓글', reply:'답글', my_posts:'내 작성글',
+    no_posts:'아직 작성한 글이 없어요',
+    post_title:'제목', post_content:'내용을 자유롭게 작성해주세요...',
+    post_city:'도시 (선택)', post_submit:'게시하기',
+    add_photo:'사진 추가', translate:'번역하기', translating:'번역 중...',
+    write_reply:'답글 달기...', reply_to:'에게 답글',
+    cat_all:'✨ 전체', cat_food:'🍽 맛집', cat_korean:'🇰🇷 한식', cat_bbq:'🥩 BBQ',
+    cat_seafood:'🦞 해산물', cat_street:'🥟 길거리', cat_dessert:'🍡 디저트',
+    cat_spot:'🏛 관광지', cat_palace:'🏯 궁궐', cat_temple:'🛕 사찰',
+    cat_nature:'🏞 자연', cat_beach:'🏖 해변', cat_kpop:'🎤 K-POP',
+    cat_cafe:'☕ 카페', cat_hanok:'🏡 한옥카페', cat_rooftop:'🌇 루프탑', cat_tea:'🍵 찻집',
+    cat_shopping:'🛍 쇼핑', cat_mall:'🏬 복합몰', cat_beauty:'💄 뷰티', cat_kpop_goods:'💿 K-POP굿즈',
+    cat_activity:'🎯 액티비티', cat_cooking:'🍳 쿠킹', cat_spa:'♨️ 찜질방', cat_night:'🌙 나이트',
+    grp_food:'🍽 맛집·음식', grp_spot:'🏛 관광지·문화', grp_cafe:'☕ 카페·음료',
+    grp_shopping:'🛍 쇼핑', grp_activity:'🎯 액티비티·나이트',
+  },
+  en:{ flag:'🇺🇸', name:'English',
+    search:'Search places, city, food...', open:'Open', closed:'Closed',
+    hours:'Hours', price:'Price', review:'Reviews', writeReview:'Write Review',
+    submit:'Post', saving:'Save', nav_explore:'Explore', nav_ai:'AI Pick',
+    nav_community:'Community', nav_me:'Me',
+    mau:'Goal', featured:'Top Picks', all_list:'All Places', route:'Directions',
+    subway:'Subway', bus:'Bus', taxi:'Taxi', walk:'Walk',
+    time:'Time', dist:'Dist', fare:'Fare', open_map:'Open in Google Maps',
+    region_select:'Select Region', all_region:'All',
+    community_title:'Traveler Community', community_sub:'Share local gems & hidden spots',
+    write_post:'Write Post', best:'Best', latest:'Latest',
+    food_post:'Food', spot_post:'Sights', cafe_post:'Café', free_post:'Free',
+    likes:'Likes', comments:'Comments', reply:'Reply', my_posts:'My Posts',
+    no_posts:'No posts yet',
+    post_title:'Title', post_content:'Share your travel experience...',
+    post_city:'City (optional)', post_submit:'Post',
+    add_photo:'Add Photo', translate:'Translate', translating:'Translating...',
+    write_reply:'Write a reply...', reply_to:'Reply to',
+    cat_all:'✨ All', cat_food:'🍽 Food', cat_korean:'🇰🇷 Korean', cat_bbq:'🥩 BBQ',
+    cat_seafood:'🦞 Seafood', cat_street:'🥟 Street Food', cat_dessert:'🍡 Dessert',
+    cat_spot:'🏛 Sights', cat_palace:'🏯 Palace', cat_temple:'🛕 Temple',
+    cat_nature:'🏞 Nature', cat_beach:'🏖 Beach', cat_kpop:'🎤 K-POP',
+    cat_cafe:'☕ Café', cat_hanok:'🏡 Hanok Café', cat_rooftop:'🌇 Rooftop', cat_tea:'🍵 Tea House',
+    cat_shopping:'🛍 Shopping', cat_mall:'🏬 Mall', cat_beauty:'💄 Beauty', cat_kpop_goods:'💿 K-POP Goods',
+    cat_activity:'🎯 Activity', cat_cooking:'🍳 Cooking', cat_spa:'♨️ Jjimjilbang', cat_night:'🌙 Nightlife',
+    grp_food:'🍽 Food', grp_spot:'🏛 Sights', grp_cafe:'☕ Café',
+    grp_shopping:'🛍 Shopping', grp_activity:'🎯 Activity & Night',
+  },
+  zh:{ flag:'🇨🇳', name:'中文',
+    search:'搜索地点...', open:'营业中', closed:'已打烊',
+    hours:'营业时间', price:'价格', review:'评价', writeReview:'撰写评价',
+    submit:'发布', saving:'收藏', nav_explore:'探索', nav_ai:'AI推荐',
+    nav_community:'社区', nav_me:'我',
+    mau:'目标', featured:'热门推荐', all_list:'全部', route:'导航',
+    subway:'地铁', bus:'公交', taxi:'出租车', walk:'步行',
+    time:'时间', dist:'距离', fare:'费用', open_map:'在谷歌地图打开',
+    region_select:'选择地区', all_region:'全部',
+    community_title:'旅行者社区', community_sub:'分享本地美食和隐藏景点',
+    write_post:'写帖子', best:'精华', latest:'最新',
+    food_post:'美食', spot_post:'景点', cafe_post:'咖啡', free_post:'自由',
+    likes:'推荐', comments:'评论', reply:'回复', my_posts:'我的帖子',
+    no_posts:'暂无帖子',
+    post_title:'标题', post_content:'分享您的旅行经历...',
+    post_city:'城市（可选）', post_submit:'发布',
+    add_photo:'添加图片', translate:'翻译', translating:'翻译中...',
+    write_reply:'写回复...', reply_to:'回复',
+    cat_all:'✨ 全部', cat_food:'🍽 美食', cat_korean:'🇰🇷 韩食', cat_bbq:'🥩 烤肉',
+    cat_seafood:'🦞 海鲜', cat_street:'🥟 街头小吃', cat_dessert:'🍡 甜点',
+    cat_spot:'🏛 景点', cat_palace:'🏯 宫殿', cat_temple:'🛕 寺庙',
+    cat_nature:'🏞 自然', cat_beach:'🏖 海滩', cat_kpop:'🎤 K-POP',
+    cat_cafe:'☕ 咖啡', cat_hanok:'🏡 韩屋咖啡', cat_rooftop:'🌇 屋顶咖啡', cat_tea:'🍵 茶馆',
+    cat_shopping:'🛍 购物', cat_mall:'🏬 商场', cat_beauty:'💄 美妆', cat_kpop_goods:'💿 K-POP周边',
+    cat_activity:'🎯 活动', cat_cooking:'🍳 烹饪课', cat_spa:'♨️ 汗蒸幕', cat_night:'🌙 夜生活',
+    grp_food:'🍽 美食', grp_spot:'🏛 景点', grp_cafe:'☕ 咖啡',
+    grp_shopping:'🛍 购物', grp_activity:'🎯 活动·夜生活',
+  },
+  ja:{ flag:'🇯🇵', name:'日本語',
+    search:'スポット検索...', open:'営業中', closed:'閉店',
+    hours:'営業時間', price:'料金', review:'レビュー', writeReview:'レビューを書く',
+    submit:'投稿', saving:'保存', nav_explore:'探索', nav_ai:'AIおすすめ',
+    nav_community:'コミュニティ', nav_me:'マイ',
+    mau:'目標まで', featured:'人気', all_list:'全スポット', route:'経路',
+    subway:'地下鉄', bus:'バス', taxi:'タクシー', walk:'徒歩',
+    time:'所要時間', dist:'距離', fare:'料金', open_map:'Googleマップで開く',
+    region_select:'地域選択', all_region:'全て',
+    community_title:'トラベラーコミュニティ', community_sub:'ローカルグルメ・穴場スポットをシェア',
+    write_post:'投稿する', best:'ベスト', latest:'最新',
+    food_post:'グルメ', spot_post:'観光地', cafe_post:'カフェ', free_post:'自由',
+    likes:'いいね', comments:'コメント', reply:'返信', my_posts:'マイ投稿',
+    no_posts:'まだ投稿がありません',
+    post_title:'タイトル', post_content:'旅の体験をシェアしよう...',
+    post_city:'都市（任意）', post_submit:'投稿する',
+    add_photo:'写真追加', translate:'翻訳', translating:'翻訳中...',
+    write_reply:'返信を書く...', reply_to:'への返信',
+    cat_all:'✨ すべて', cat_food:'🍽 グルメ', cat_korean:'🇰🇷 韓食', cat_bbq:'🥩 焼肉',
+    cat_seafood:'🦞 海鮮', cat_street:'🥟 屋台', cat_dessert:'🍡 スイーツ',
+    cat_spot:'🏛 観光地', cat_palace:'🏯 宮殿', cat_temple:'🛕 寺院',
+    cat_nature:'🏞 自然', cat_beach:'🏖 ビーチ', cat_kpop:'🎤 K-POP',
+    cat_cafe:'☕ カフェ', cat_hanok:'🏡 韓屋カフェ', cat_rooftop:'🌇 ルーフトップ', cat_tea:'🍵 茶館',
+    cat_shopping:'🛍 ショッピング', cat_mall:'🏬 モール', cat_beauty:'💄 コスメ', cat_kpop_goods:'💿 K-POPグッズ',
+    cat_activity:'🎯 体験', cat_cooking:'🍳 料理教室', cat_spa:'♨️ チムジルバン', cat_night:'🌙 ナイトライフ',
+    grp_food:'🍽 グルメ', grp_spot:'🏛 観光地', grp_cafe:'☕ カフェ',
+    grp_shopping:'🛍 ショッピング', grp_activity:'🎯 体験・ナイト',
+  },
+  tw:{ flag:'🇹🇼', name:'繁體中文', search:'搜尋地點...', open:'營業中', closed:'已打烊', hours:'營業時間', price:'價格', review:'評價', writeReview:'撰寫評價', submit:'發布', saving:'收藏', nav_explore:'探索', nav_ai:'AI推薦', nav_community:'社群', nav_me:'我', mau:'目標', featured:'熱門', all_list:'全部', route:'導航', subway:'地鐵', bus:'公車', taxi:'計程車', walk:'步行', time:'時間', dist:'距離', fare:'費用', open_map:'在Google地圖開啟', region_select:'選擇地區', all_region:'全部', community_title:'旅行者社群', community_sub:'分享在地美食與隱藏景點', write_post:'寫文章', best:'精華', latest:'最新', food_post:'美食', spot_post:'景點', cafe_post:'咖啡', free_post:'自由', likes:'推薦', comments:'留言', reply:'回覆', my_posts:'我的文章', no_posts:'尚無文章', post_title:'標題', post_content:'分享旅行體驗...', post_city:'城市（選填）', post_submit:'發布', add_photo:'新增圖片', translate:'翻譯', translating:'翻譯中...', write_reply:'寫回覆...', reply_to:'回覆', cat_all:'✨ 全部', cat_food:'🍽 美食', cat_korean:'🇰🇷 韓食', cat_bbq:'🥩 烤肉', cat_seafood:'🦞 海鮮', cat_street:'🥟 街頭', cat_dessert:'🍡 甜點', cat_spot:'🏛 景點', cat_palace:'🏯 宮殿', cat_temple:'🛕 寺廟', cat_nature:'🏞 自然', cat_beach:'🏖 海灘', cat_kpop:'🎤 K-POP', cat_cafe:'☕ 咖啡', cat_hanok:'🏡 韓屋', cat_rooftop:'🌇 屋頂', cat_tea:'🍵 茶館', cat_shopping:'🛍 購物', cat_mall:'🏬 商場', cat_beauty:'💄 美妝', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 活動', cat_cooking:'🍳 烹飪', cat_spa:'♨️ 汗蒸', cat_night:'🌙 夜生活', grp_food:'🍽 美食', grp_spot:'🏛 景點', grp_cafe:'☕ 咖啡', grp_shopping:'🛍 購物', grp_activity:'🎯 活動',
+  },
+  th:{ flag:'🇹🇭', name:'ภาษาไทย', search:'ค้นหา...', open:'เปิด', closed:'ปิด', hours:'เวลา', price:'ราคา', review:'รีวิว', writeReview:'เขียนรีวิว', submit:'โพสต์', saving:'บันทึก', nav_explore:'สำรวจ', nav_ai:'AI', nav_community:'ชุมชน', nav_me:'ฉัน', mau:'เป้าหมาย', featured:'แนะนำ', all_list:'ทั้งหมด', route:'เส้นทาง', subway:'รถไฟ', bus:'รถบัส', taxi:'แท็กซี่', walk:'เดิน', time:'เวลา', dist:'ระยะ', fare:'ค่าโดยสาร', open_map:'เปิด Google Maps', region_select:'เลือกภูมิภาค', all_region:'ทั้งหมด', community_title:'ชุมชนนักเดินทาง', community_sub:'แชร์ร้านอาหารและสถานที่ลับ', write_post:'เขียน', best:'ยอดนิยม', latest:'ล่าสุด', food_post:'อาหาร', spot_post:'สถานที่', cafe_post:'คาเฟ่', free_post:'ทั่วไป', likes:'ถูกใจ', comments:'ความเห็น', reply:'ตอบ', my_posts:'โพสต์ของฉัน', no_posts:'ยังไม่มีโพสต์', post_title:'หัวข้อ', post_content:'แชร์ประสบการณ์...', post_city:'เมือง', post_submit:'โพสต์', add_photo:'เพิ่มรูป', translate:'แปล', translating:'กำลังแปล...', write_reply:'เขียนคำตอบ...', reply_to:'ตอบ', cat_all:'✨ ทั้งหมด', cat_food:'🍽 อาหาร', cat_korean:'🇰🇷 เกาหลี', cat_bbq:'🥩 บาร์บีคิว', cat_seafood:'🦞 ทะเล', cat_street:'🥟 ริมทาง', cat_dessert:'🍡 ของหวาน', cat_spot:'🏛 ท่องเที่ยว', cat_palace:'🏯 วัง', cat_temple:'🛕 วัด', cat_nature:'🏞 ธรรมชาติ', cat_beach:'🏖 หาด', cat_kpop:'🎤 K-POP', cat_cafe:'☕ คาเฟ่', cat_hanok:'🏡 ฮันอก', cat_rooftop:'🌇 รูฟท็อป', cat_tea:'🍵 ชา', cat_shopping:'🛍 ช้อปปิ้ง', cat_mall:'🏬 ห้าง', cat_beauty:'💄 บิวตี้', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 กิจกรรม', cat_cooking:'🍳 ทำอาหาร', cat_spa:'♨️ สปา', cat_night:'🌙 กลางคืน', grp_food:'🍽 อาหาร', grp_spot:'🏛 ท่องเที่ยว', grp_cafe:'☕ คาเฟ่', grp_shopping:'🛍 ช้อปปิ้ง', grp_activity:'🎯 กิจกรรม',
+  },
+  vi:{ flag:'🇻🇳', name:'Tiếng Việt', search:'Tìm kiếm...', open:'Mở', closed:'Đóng', hours:'Giờ', price:'Giá', review:'Đánh giá', writeReview:'Viết đánh giá', submit:'Đăng', saving:'Lưu', nav_explore:'Khám phá', nav_ai:'AI', nav_community:'Cộng đồng', nav_me:'Tôi', mau:'Mục tiêu', featured:'Nổi bật', all_list:'Tất cả', route:'Đường', subway:'Tàu', bus:'Xe buýt', taxi:'Taxi', walk:'Đi bộ', time:'Thời gian', dist:'Khoảng cách', fare:'Giá vé', open_map:'Mở Google Maps', region_select:'Chọn vùng', all_region:'Tất cả', community_title:'Cộng đồng du khách', community_sub:'Chia sẻ quán ăn & điểm ẩn', write_post:'Viết', best:'Nổi bật', latest:'Mới', food_post:'Ẩm thực', spot_post:'Địa điểm', cafe_post:'Café', free_post:'Tự do', likes:'Thích', comments:'Bình luận', reply:'Trả lời', my_posts:'Bài của tôi', no_posts:'Chưa có bài', post_title:'Tiêu đề', post_content:'Chia sẻ trải nghiệm...', post_city:'Thành phố', post_submit:'Đăng', add_photo:'Thêm ảnh', translate:'Dịch', translating:'Đang dịch...', write_reply:'Viết trả lời...', reply_to:'Trả lời', cat_all:'✨ Tất cả', cat_food:'🍽 Ẩm thực', cat_korean:'🇰🇷 Hàn', cat_bbq:'🥩 Nướng', cat_seafood:'🦞 Hải sản', cat_street:'🥟 Đường phố', cat_dessert:'🍡 Tráng miệng', cat_spot:'🏛 Điểm đến', cat_palace:'🏯 Cung', cat_temple:'🛕 Chùa', cat_nature:'🏞 Thiên nhiên', cat_beach:'🏖 Biển', cat_kpop:'🎤 K-POP', cat_cafe:'☕ Café', cat_hanok:'🏡 Hanok', cat_rooftop:'🌇 Rooftop', cat_tea:'🍵 Trà', cat_shopping:'🛍 Mua sắm', cat_mall:'🏬 Mall', cat_beauty:'💄 Làm đẹp', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 Hoạt động', cat_cooking:'🍳 Nấu ăn', cat_spa:'♨️ Sauna', cat_night:'🌙 Đêm', grp_food:'🍽 Ẩm thực', grp_spot:'🏛 Địa điểm', grp_cafe:'☕ Café', grp_shopping:'🛍 Mua sắm', grp_activity:'🎯 Hoạt động',
+  },
+  id:{ flag:'🇮🇩', name:'Indonesia', search:'Cari...', open:'Buka', closed:'Tutup', hours:'Jam', price:'Harga', review:'Ulasan', writeReview:'Tulis ulasan', submit:'Posting', saving:'Simpan', nav_explore:'Jelajahi', nav_ai:'AI', nav_community:'Komunitas', nav_me:'Saya', mau:'Target', featured:'Populer', all_list:'Semua', route:'Rute', subway:'Subway', bus:'Bus', taxi:'Taksi', walk:'Jalan', time:'Waktu', dist:'Jarak', fare:'Tarif', open_map:'Buka Google Maps', region_select:'Pilih Wilayah', all_region:'Semua', community_title:'Komunitas Wisatawan', community_sub:'Berbagi kuliner & tempat tersembunyi', write_post:'Tulis', best:'Terbaik', latest:'Terbaru', food_post:'Kuliner', spot_post:'Wisata', cafe_post:'Kafe', free_post:'Bebas', likes:'Suka', comments:'Komentar', reply:'Balas', my_posts:'Post Saya', no_posts:'Belum ada post', post_title:'Judul', post_content:'Bagikan pengalaman...', post_city:'Kota', post_submit:'Posting', add_photo:'Tambah Foto', translate:'Terjemahkan', translating:'Menerjemahkan...', write_reply:'Tulis balasan...', reply_to:'Balas', cat_all:'✨ Semua', cat_food:'🍽 Kuliner', cat_korean:'🇰🇷 Korea', cat_bbq:'🥩 BBQ', cat_seafood:'🦞 Seafood', cat_street:'🥟 Kaki Lima', cat_dessert:'🍡 Dessert', cat_spot:'🏛 Wisata', cat_palace:'🏯 Istana', cat_temple:'🛕 Kuil', cat_nature:'🏞 Alam', cat_beach:'🏖 Pantai', cat_kpop:'🎤 K-POP', cat_cafe:'☕ Kafe', cat_hanok:'🏡 Hanok', cat_rooftop:'🌇 Rooftop', cat_tea:'🍵 Teh', cat_shopping:'🛍 Belanja', cat_mall:'🏬 Mall', cat_beauty:'💄 Kecantikan', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 Aktivitas', cat_cooking:'🍳 Memasak', cat_spa:'♨️ Sauna', cat_night:'🌙 Malam', grp_food:'🍽 Kuliner', grp_spot:'🏛 Wisata', grp_cafe:'☕ Kafe', grp_shopping:'🛍 Belanja', grp_activity:'🎯 Aktivitas',
+  },
+  ms:{ flag:'🇲🇾', name:'Melayu', search:'Cari...', open:'Buka', closed:'Tutup', hours:'Masa', price:'Harga', review:'Ulasan', writeReview:'Tulis ulasan', submit:'Hantar', saving:'Simpan', nav_explore:'Terokai', nav_ai:'AI', nav_community:'Komuniti', nav_me:'Saya', mau:'Sasaran', featured:'Popular', all_list:'Semua', route:'Laluan', subway:'Subway', bus:'Bas', taxi:'Teksi', walk:'Jalan', time:'Masa', dist:'Jarak', fare:'Tambang', open_map:'Buka Google Maps', region_select:'Pilih Wilayah', all_region:'Semua', community_title:'Komuniti Pengembara', community_sub:'Kongsi restoran & tempat tersembunyi', write_post:'Tulis', best:'Terbaik', latest:'Terbaru', food_post:'Makanan', spot_post:'Tarikan', cafe_post:'Kafe', free_post:'Bebas', likes:'Suka', comments:'Komen', reply:'Balas', my_posts:'Post Saya', no_posts:'Belum ada post', post_title:'Tajuk', post_content:'Kongsi pengalaman...', post_city:'Bandar', post_submit:'Hantar', add_photo:'Tambah Foto', translate:'Terjemah', translating:'Menterjemah...', write_reply:'Tulis balasan...', reply_to:'Balas', cat_all:'✨ Semua', cat_food:'🍽 Makanan', cat_korean:'🇰🇷 Korea', cat_bbq:'🥩 BBQ', cat_seafood:'🦞 Laut', cat_street:'🥟 Tepi Jalan', cat_dessert:'🍡 Pencuci Mulut', cat_spot:'🏛 Tarikan', cat_palace:'🏯 Istana', cat_temple:'🛕 Kuil', cat_nature:'🏞 Alam', cat_beach:'🏖 Pantai', cat_kpop:'🎤 K-POP', cat_cafe:'☕ Kafe', cat_hanok:'🏡 Hanok', cat_rooftop:'🌇 Rooftop', cat_tea:'🍵 Teh', cat_shopping:'🛍 Beli-belah', cat_mall:'🏬 Mall', cat_beauty:'💄 Kecantikan', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 Aktiviti', cat_cooking:'🍳 Masak', cat_spa:'♨️ Sauna', cat_night:'🌙 Malam', grp_food:'🍽 Makanan', grp_spot:'🏛 Tarikan', grp_cafe:'☕ Kafe', grp_shopping:'🛍 Belanja', grp_activity:'🎯 Aktiviti',
+  },
+  es:{ flag:'🇪🇸', name:'Español', search:'Buscar...', open:'Abierto', closed:'Cerrado', hours:'Horario', price:'Precio', review:'Reseñas', writeReview:'Escribir reseña', submit:'Publicar', saving:'Guardar', nav_explore:'Explorar', nav_ai:'IA', nav_community:'Comunidad', nav_me:'Yo', mau:'Meta', featured:'Populares', all_list:'Todos', route:'Ruta', subway:'Metro', bus:'Bus', taxi:'Taxi', walk:'A pie', time:'Tiempo', dist:'Distancia', fare:'Tarifa', open_map:'Abrir Google Maps', region_select:'Seleccionar región', all_region:'Todo', community_title:'Comunidad de viajeros', community_sub:'Comparte restaurantes y lugares secretos', write_post:'Escribir', best:'Mejor', latest:'Reciente', food_post:'Comida', spot_post:'Lugares', cafe_post:'Café', free_post:'Libre', likes:'Me gusta', comments:'Comentarios', reply:'Responder', my_posts:'Mis posts', no_posts:'Sin posts', post_title:'Título', post_content:'Comparte tu experiencia...', post_city:'Ciudad', post_submit:'Publicar', add_photo:'Añadir foto', translate:'Traducir', translating:'Traduciendo...', write_reply:'Escribe una respuesta...', reply_to:'Responder a', cat_all:'✨ Todo', cat_food:'🍽 Comida', cat_korean:'🇰🇷 Coreano', cat_bbq:'🥩 BBQ', cat_seafood:'🦞 Mariscos', cat_street:'🥟 Calle', cat_dessert:'🍡 Postre', cat_spot:'🏛 Lugares', cat_palace:'🏯 Palacio', cat_temple:'🛕 Templo', cat_nature:'🏞 Naturaleza', cat_beach:'🏖 Playa', cat_kpop:'🎤 K-POP', cat_cafe:'☕ Café', cat_hanok:'🏡 Hanok', cat_rooftop:'🌇 Azotea', cat_tea:'🍵 Té', cat_shopping:'🛍 Compras', cat_mall:'🏬 Centro', cat_beauty:'💄 Belleza', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 Actividad', cat_cooking:'🍳 Cocina', cat_spa:'♨️ Sauna', cat_night:'🌙 Noche', grp_food:'🍽 Comida', grp_spot:'🏛 Lugares', grp_cafe:'☕ Café', grp_shopping:'🛍 Compras', grp_activity:'🎯 Actividad',
+  },
+  fr:{ flag:'🇫🇷', name:'Français', search:'Chercher...', open:'Ouvert', closed:'Fermé', hours:'Horaires', price:'Prix', review:'Avis', writeReview:'Écrire un avis', submit:'Publier', saving:'Sauver', nav_explore:'Explorer', nav_ai:'IA', nav_community:'Communauté', nav_me:'Moi', mau:'Objectif', featured:'Populaires', all_list:'Tous', route:'Itinéraire', subway:'Métro', bus:'Bus', taxi:'Taxi', walk:'À pied', time:'Durée', dist:'Distance', fare:'Tarif', open_map:'Ouvrir Google Maps', region_select:'Sélectionner région', all_region:'Tout', community_title:'Communauté de voyageurs', community_sub:'Partagez restaurants et lieux cachés', write_post:'Écrire', best:'Meilleur', latest:'Récent', food_post:'Cuisine', spot_post:'Sites', cafe_post:'Café', free_post:'Libre', likes:'J\'aime', comments:'Commentaires', reply:'Répondre', my_posts:'Mes posts', no_posts:'Pas de posts', post_title:'Titre', post_content:'Partagez votre expérience...', post_city:'Ville', post_submit:'Publier', add_photo:'Ajouter photo', translate:'Traduire', translating:'Traduction...', write_reply:'Écrire une réponse...', reply_to:'Répondre à', cat_all:'✨ Tout', cat_food:'🍽 Cuisine', cat_korean:'🇰🇷 Coréen', cat_bbq:'🥩 BBQ', cat_seafood:'🦞 Fruits de mer', cat_street:'🥟 Rue', cat_dessert:'🍡 Dessert', cat_spot:'🏛 Sites', cat_palace:'🏯 Palais', cat_temple:'🛕 Temple', cat_nature:'🏞 Nature', cat_beach:'🏖 Plage', cat_kpop:'🎤 K-POP', cat_cafe:'☕ Café', cat_hanok:'🏡 Hanok', cat_rooftop:'🌇 Rooftop', cat_tea:'🍵 Thé', cat_shopping:'🛍 Shopping', cat_mall:'🏬 Centre', cat_beauty:'💄 Beauté', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 Activité', cat_cooking:'🍳 Cuisine', cat_spa:'♨️ Sauna', cat_night:'🌙 Nuit', grp_food:'🍽 Cuisine', grp_spot:'🏛 Sites', grp_cafe:'☕ Café', grp_shopping:'🛍 Shopping', grp_activity:'🎯 Activité',
+  },
+  de:{ flag:'🇩🇪', name:'Deutsch', search:'Suchen...', open:'Geöffnet', closed:'Geschlossen', hours:'Öffnungszeiten', price:'Preis', review:'Bewertungen', writeReview:'Bewertung schreiben', submit:'Posten', saving:'Speichern', nav_explore:'Entdecken', nav_ai:'KI', nav_community:'Community', nav_me:'Ich', mau:'Ziel', featured:'Beliebt', all_list:'Alle', route:'Route', subway:'U-Bahn', bus:'Bus', taxi:'Taxi', walk:'Zu Fuß', time:'Zeit', dist:'Entfernung', fare:'Preis', open_map:'In Google Maps öffnen', region_select:'Region wählen', all_region:'Alle', community_title:'Reisenden-Community', community_sub:'Lokale Geheimtipps teilen', write_post:'Schreiben', best:'Beste', latest:'Neueste', food_post:'Essen', spot_post:'Sehenswürdigkeiten', cafe_post:'Café', free_post:'Frei', likes:'Gefällt mir', comments:'Kommentare', reply:'Antworten', my_posts:'Meine Posts', no_posts:'Noch keine Posts', post_title:'Titel', post_content:'Teile deine Erfahrung...', post_city:'Stadt', post_submit:'Posten', add_photo:'Foto hinzufügen', translate:'Übersetzen', translating:'Übersetze...', write_reply:'Antwort schreiben...', reply_to:'Antwort an', cat_all:'✨ Alle', cat_food:'🍽 Essen', cat_korean:'🇰🇷 Koreanisch', cat_bbq:'🥩 BBQ', cat_seafood:'🦞 Meeresfrüchte', cat_street:'🥟 Straße', cat_dessert:'🍡 Dessert', cat_spot:'🏛 Sehenwürdigkeiten', cat_palace:'🏯 Palast', cat_temple:'🛕 Tempel', cat_nature:'🏞 Natur', cat_beach:'🏖 Strand', cat_kpop:'🎤 K-POP', cat_cafe:'☕ Café', cat_hanok:'🏡 Hanok', cat_rooftop:'🌇 Rooftop', cat_tea:'🍵 Tee', cat_shopping:'🛍 Shopping', cat_mall:'🏬 Mall', cat_beauty:'💄 Beauty', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 Aktivität', cat_cooking:'🍳 Kochen', cat_spa:'♨️ Sauna', cat_night:'🌙 Nacht', grp_food:'🍽 Essen', grp_spot:'🏛 Sehenswürdigkeiten', grp_cafe:'☕ Café', grp_shopping:'🛍 Shopping', grp_activity:'🎯 Aktivität',
+  },
+  pt:{ flag:'🇧🇷', name:'Português', search:'Buscar...', open:'Aberto', closed:'Fechado', hours:'Horário', price:'Preço', review:'Avaliações', writeReview:'Escrever avaliação', submit:'Publicar', saving:'Salvar', nav_explore:'Explorar', nav_ai:'IA', nav_community:'Comunidade', nav_me:'Eu', mau:'Meta', featured:'Populares', all_list:'Todos', route:'Rota', subway:'Metrô', bus:'Ônibus', taxi:'Táxi', walk:'A pé', time:'Tempo', dist:'Distância', fare:'Tarifa', open_map:'Abrir Google Maps', region_select:'Selecionar região', all_region:'Tudo', community_title:'Comunidade de viajantes', community_sub:'Compartilhe restaurantes e lugares escondidos', write_post:'Escrever', best:'Melhor', latest:'Recente', food_post:'Gastronomia', spot_post:'Pontos', cafe_post:'Café', free_post:'Livre', likes:'Curtir', comments:'Comentários', reply:'Responder', my_posts:'Meus posts', no_posts:'Sem posts', post_title:'Título', post_content:'Compartilhe sua experiência...', post_city:'Cidade', post_submit:'Publicar', add_photo:'Adicionar foto', translate:'Traduzir', translating:'Traduzindo...', write_reply:'Escrever resposta...', reply_to:'Responder a', cat_all:'✨ Tudo', cat_food:'🍽 Gastronomia', cat_korean:'🇰🇷 Coreano', cat_bbq:'🥩 Churrasco', cat_seafood:'🦞 Frutos do mar', cat_street:'🥟 Rua', cat_dessert:'🍡 Sobremesa', cat_spot:'🏛 Pontos', cat_palace:'🏯 Palácio', cat_temple:'🛕 Templo', cat_nature:'🏞 Natureza', cat_beach:'🏖 Praia', cat_kpop:'🎤 K-POP', cat_cafe:'☕ Café', cat_hanok:'🏡 Hanok', cat_rooftop:'🌇 Cobertura', cat_tea:'🍵 Chá', cat_shopping:'🛍 Compras', cat_mall:'🏬 Shopping', cat_beauty:'💄 Beleza', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 Atividade', cat_cooking:'🍳 Culinária', cat_spa:'♨️ Sauna', cat_night:'🌙 Noite', grp_food:'🍽 Gastronomia', grp_spot:'🏛 Pontos', grp_cafe:'☕ Café', grp_shopping:'🛍 Compras', grp_activity:'🎯 Atividade',
+  },
+  ru:{ flag:'🇷🇺', name:'Русский', search:'Поиск...', open:'Открыто', closed:'Закрыто', hours:'Часы', price:'Цена', review:'Отзывы', writeReview:'Написать отзыв', submit:'Опубликовать', saving:'Сохранить', nav_explore:'Исследовать', nav_ai:'ИИ', nav_community:'Сообщество', nav_me:'Я', mau:'Цель', featured:'Популярное', all_list:'Все', route:'Маршрут', subway:'Метро', bus:'Автобус', taxi:'Такси', walk:'Пешком', time:'Время', dist:'Расстояние', fare:'Стоимость', open_map:'Открыть Google Maps', region_select:'Выбрать регион', all_region:'Все', community_title:'Сообщество путешественников', community_sub:'Делитесь местными ресторанами', write_post:'Написать', best:'Лучшее', latest:'Новое', food_post:'Еда', spot_post:'Места', cafe_post:'Кафе', free_post:'Свободно', likes:'Нравится', comments:'Комментарии', reply:'Ответить', my_posts:'Мои посты', no_posts:'Постов нет', post_title:'Заголовок', post_content:'Поделитесь опытом...', post_city:'Город', post_submit:'Опубликовать', add_photo:'Добавить фото', translate:'Перевести', translating:'Перевожу...', write_reply:'Написать ответ...', reply_to:'Ответ', cat_all:'✨ Все', cat_food:'🍽 Еда', cat_korean:'🇰🇷 Корейская', cat_bbq:'🥩 BBQ', cat_seafood:'🦞 Морепродукты', cat_street:'🥟 Улица', cat_dessert:'🍡 Десерт', cat_spot:'🏛 Места', cat_palace:'🏯 Дворец', cat_temple:'🛕 Храм', cat_nature:'🏞 Природа', cat_beach:'🏖 Пляж', cat_kpop:'🎤 K-POP', cat_cafe:'☕ Кафе', cat_hanok:'🏡 Ханок', cat_rooftop:'🌇 Крыша', cat_tea:'🍵 Чай', cat_shopping:'🛍 Шопинг', cat_mall:'🏬 Молл', cat_beauty:'💄 Красота', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 Активности', cat_cooking:'🍳 Кулинария', cat_spa:'♨️ Баня', cat_night:'🌙 Ночь', grp_food:'🍽 Еда', grp_spot:'🏛 Места', grp_cafe:'☕ Кафе', grp_shopping:'🛍 Шопинг', grp_activity:'🎯 Активности',
+  },
+  ar:{ flag:'🇸🇦', name:'العربية', search:'بحث...', open:'مفتوح', closed:'مغلق', hours:'ساعات', price:'السعر', review:'تقييمات', writeReview:'اكتب تقييماً', submit:'نشر', saving:'حفظ', nav_explore:'استكشف', nav_ai:'AI', nav_community:'المجتمع', nav_me:'أنا', mau:'الهدف', featured:'شعبي', all_list:'الكل', route:'اتجاهات', subway:'مترو', bus:'حافلة', taxi:'تاكسي', walk:'سيراً', time:'وقت', dist:'مسافة', fare:'أجرة', open_map:'فتح خرائط Google', region_select:'اختر المنطقة', all_region:'الكل', community_title:'مجتمع المسافرين', community_sub:'شارك المطاعم والأماكن المخفية', write_post:'كتابة', best:'الأفضل', latest:'الأحدث', food_post:'طعام', spot_post:'معالم', cafe_post:'مقهى', free_post:'حر', likes:'إعجاب', comments:'تعليقات', reply:'رد', my_posts:'منشوراتي', no_posts:'لا توجد منشورات', post_title:'عنوان', post_content:'شارك تجربتك...', post_city:'مدينة', post_submit:'نشر', add_photo:'إضافة صورة', translate:'ترجمة', translating:'جاري الترجمة...', write_reply:'اكتب رداً...', reply_to:'رداً على', cat_all:'✨ الكل', cat_food:'🍽 طعام', cat_korean:'🇰🇷 كوري', cat_bbq:'🥩 مشوي', cat_seafood:'🦞 بحري', cat_street:'🥟 شارع', cat_dessert:'🍡 حلويات', cat_spot:'🏛 معالم', cat_palace:'🏯 قصر', cat_temple:'🛕 معبد', cat_nature:'🏞 طبيعة', cat_beach:'🏖 شاطئ', cat_kpop:'🎤 K-POP', cat_cafe:'☕ مقهى', cat_hanok:'🏡 هانوك', cat_rooftop:'🌇 سطح', cat_tea:'🍵 شاي', cat_shopping:'🛍 تسوق', cat_mall:'🏬 مول', cat_beauty:'💄 جمال', cat_kpop_goods:'💿 K-POP', cat_activity:'🎯 أنشطة', cat_cooking:'🍳 طبخ', cat_spa:'♨️ سبا', cat_night:'🌙 ليل', grp_food:'🍽 طعام', grp_spot:'🏛 معالم', grp_cafe:'☕ مقهى', grp_shopping:'🛍 تسوق', grp_activity:'🎯 أنشطة',
+  },
+}
+
+const REGION_DATA = [
+  { id:'all', label:'전체', icon:'🇰🇷', districts:[] },
+  { id:'서울', label:'서울 Seoul', icon:'🏙', districts:['강남/역삼/삼성','신사/청담/압구정','서초/교대/사당','잠실/송파/강동','을지로/명동/중구/동대문','서울역/이태원/용산','종로/인사동','홍대/합정/마포/서대문','여의도','영등포역','구로/신도림/금천','김포공항/염창/강서','건대입구/성수/왕십리','성북/강북/노원/도봉'] },
+  { id:'부산', label:'부산 Busan', icon:'🌊', districts:['해운대/마린시티','광안리/수영','서면/부전','남포동/자갈치','동래/온천장','기장/일광','강서/사상','영도'] },
+  { id:'제주', label:'제주 Jeju', icon:'🌋', districts:['제주시내','애월/한림','성산/표선','서귀포시내','중문/대포','한경/모슬포','조천/구좌'] },
+  { id:'경기', label:'경기 Gyeonggi', icon:'🏘', districts:['수원 Suwon','성남/판교','용인 Yongin','고양/일산','안양/군포','화성/동탄','광명','파주 Paju','남양주'] },
+  { id:'인천', label:'인천 Incheon', icon:'✈️', districts:['송도 Songdo','부평/계양','인천공항/영종도','강화도','중구/동구'] },
+  { id:'강원', label:'강원 Gangwon', icon:'⛰', districts:['강릉 Gangneung','속초/고성','춘천 Chuncheon','원주 Wonju','평창/정선','태백/삼척'] },
+  { id:'경상', label:'경상 Gyeongsang', icon:'🏯', districts:['대구 Daegu','경주 Gyeongju','포항 Pohang','안동 Andong','창원 Changwon','진주 Jinju','울산 Ulsan','거제/통영'] },
+  { id:'전라', label:'전라 Jeolla', icon:'🌾', districts:['광주 Gwangju','전주 Jeonju','여수 Yeosu','순천 Suncheon','목포 Mokpo','군산 Gunsan','남원 Namwon'] },
+  { id:'충청', label:'충청 Chungcheong', icon:'🌿', districts:['대전 Daejeon','청주 Cheongju','천안/아산','공주/부여','보령/태안','충주 Chungju'] },
+]
+
+const CAT_BG: any = { food:'#fff5f5', spot:'#f0f4ff', cafe:'#fff8f0', shopping:'#f0fff4', activity:'#f5f0ff' }
+const ROUTES_DATA: any = {
+  subway:{ time:'18분', dist:'3.2km', cost:'₩1,450', steps:[{n:1,t:'가까운 지하철역으로 이동',m:'도보 5분'},{n:2,t:'1호선 승차 → 목적지역 하차',m:'3정거장 8분'},{n:3,t:'2번 출구 직진 200m',m:'도보 3분'},{n:4,t:'목적지 도착 🎉',m:''}]},
+  bus:{ time:'25분', dist:'3.5km', cost:'₩1,300', steps:[{n:1,t:'버스 정류장 이동',m:'3분'},{n:2,t:'273번 승차',m:'배차 10~15분'},{n:3,t:'목적지 정류장 하차',m:'18분'}]},
+  taxi:{ time:'12분', dist:'3.2km', cost:'₩8,000~10,000', steps:[{n:1,t:'카카오택시 호출',m:'대기 2분'},{n:2,t:'탑승 후 목적지 입력',m:'기본요금 ₩4,800'},{n:3,t:'목적지 도착',m:'12분'}]},
+  walk:{ time:'38분', dist:'2.8km', cost:'무료', steps:[{n:1,t:'북쪽 직진 500m',m:''},{n:2,t:'사거리 우회전',m:''},{n:3,t:'목적지 도착 🚶',m:''}]},
+}
+const AVATAR_COLORS = ['#C8102E','#1565C0','#1A7A4A','#8B5E3C','#6B21A8','#F5A623','#0D1B2A']
+const getAvatarColor = (name: string) => AVATAR_COLORS[(name||'?').charCodeAt(0) % AVATAR_COLORS.length]
+
+export default function App() {
+  const [lang, setLang] = useState('ko')
+  const [tab, setTab] = useState('explore')
+  const [places, setPlaces] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedRegion, setSelectedRegion] = useState(REGION_DATA[0])
+  const [selectedDistrict, setSelectedDistrict] = useState('전체')
+  const [selectedCat, setSelectedCat] = useState('all')
+  const [searchText, setSearchText] = useState('')
+  const [selectedPlace, setSelectedPlace] = useState<any>(null)
+  const [saved, setSaved] = useState<string[]>([])
+  const [reviews, setReviews] = useState<any[]>([])
+  const [reviewText, setReviewText] = useState('')
+  const [reviewStar, setReviewStar] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
+  const [posts, setPosts] = useState<any[]>([])
+  const [postsLoading, setPostsLoading] = useState(true)
+  const [postFilter, setPostFilter] = useState('latest')
+  const [showWriteModal, setShowWriteModal] = useState(false)
+  const [postTitle, setPostTitle] = useState('')
+  const [postContent, setPostContent] = useState('')
+  const [postCity, setPostCity] = useState('')
+  const [postCategory, setPostCategory] = useState('free')
+  const [postSubmitting, setPostSubmitting] = useState(false)
+  const [postPhoto, setPostPhoto] = useState<string | null>(null)
+  const [postPhotoUploading, setPostPhotoUploading] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<any>(null)
+  const [postComments, setPostComments] = useState<any[]>([])
+  const [commentText, setCommentText] = useState('')
+  const [replyTo, setReplyTo] = useState<any>(null)
+  const [myPosts, setMyPosts] = useState<any[]>([])
+  const [myReviewCount, setMyReviewCount] = useState(0)
+  const [showRegionModal, setShowRegionModal] = useState(false)
+  const [showLangModal, setShowLangModal] = useState(false)
+  const [showRouteModal, setShowRouteModal] = useState(false)
+  const [routeTransport, setRouteTransport] = useState('subway')
+  const [tempRegion, setTempRegion] = useState(REGION_DATA[0])
+  const [translations, setTranslations] = useState<{[key:string]:string}>({})
+  const [translating, setTranslating] = useState<{[key:string]:boolean}>({})
+  const mauCount = 247; const mauGoal = 5000
+  const L = LANGS[lang] || LANGS['ko']
+
+  const CAT_GROUPS = [
+    { label:'', items:[{ key:'all', label:L.cat_all, color:'#0D1B2A' }] },
+    { label:L.grp_food, items:[{key:'food',label:L.cat_food,color:'#C8102E'},{key:'food_k',label:L.cat_korean,color:'#C8102E'},{key:'food_b',label:L.cat_bbq,color:'#C8102E'},{key:'food_s',label:L.cat_seafood,color:'#C8102E'},{key:'food_st',label:L.cat_street,color:'#C8102E'},{key:'food_d',label:L.cat_dessert,color:'#C8102E'}]},
+    { label:L.grp_spot, items:[{key:'spot',label:L.cat_spot,color:'#1565C0'},{key:'spot_p',label:L.cat_palace,color:'#1565C0'},{key:'spot_t',label:L.cat_temple,color:'#1565C0'},{key:'spot_n',label:L.cat_nature,color:'#1565C0'},{key:'spot_b',label:L.cat_beach,color:'#1565C0'},{key:'spot_k',label:L.cat_kpop,color:'#1565C0'}]},
+    { label:L.grp_cafe, items:[{key:'cafe',label:L.cat_cafe,color:'#8B5E3C'},{key:'cafe_h',label:L.cat_hanok,color:'#8B5E3C'},{key:'cafe_r',label:L.cat_rooftop,color:'#8B5E3C'},{key:'cafe_t',label:L.cat_tea,color:'#8B5E3C'}]},
+    { label:L.grp_shopping, items:[{key:'shopping',label:L.cat_shopping,color:'#1A7A4A'},{key:'shopping_m',label:L.cat_mall,color:'#1A7A4A'},{key:'shopping_b',label:L.cat_beauty,color:'#1A7A4A'},{key:'shopping_k',label:L.cat_kpop_goods,color:'#1A7A4A'}]},
+    { label:L.grp_activity, items:[{key:'activity',label:L.cat_activity,color:'#6B21A8'},{key:'activity_c',label:L.cat_cooking,color:'#6B21A8'},{key:'activity_s',label:L.cat_spa,color:'#6B21A8'},{key:'activity_n',label:L.cat_night,color:'#374151'}]},
+  ]
+
+  useEffect(() => { loadPlaces() }, [selectedRegion, selectedDistrict, selectedCat, searchText])
+  useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
+  useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
+
+  async function loadPlaces() {
+    setLoading(true)
+    let q = supabase.from('places').select('*')
+    if(selectedRegion.id!=='all') q=q.eq('city',selectedRegion.id)
+    if(selectedDistrict!=='전체') q=q.eq('district',selectedDistrict)
+    const catBase=selectedCat.split('_')[0]
+    if(selectedCat!=='all') q=q.eq('category',catBase)
+    if(searchText.trim()) q=q.ilike('name',`%${searchText}%`)
+    const {data}=await q; setPlaces(data||[]); setLoading(false)
+  }
+
+  async function loadPosts() {
+    setPostsLoading(true)
+    let q=supabase.from('posts').select('*')
+    q = postFilter==='best' ? q.order('likes',{ascending:false}) : q.order('created_at',{ascending:false})
+    const {data}=await q; setPosts(data||[]); setPostsLoading(false)
+  }
+
+  async function loadMyData() {
+    const {data:p}=await supabase.from('posts').select('*').eq('user_name','나').order('created_at',{ascending:false})
+    setMyPosts(p||[])
+    const {data:r}=await supabase.from('reviews').select('id').eq('user_name','나')
+    setMyReviewCount((r||[]).length)
+  }
+
+  async function loadReviews(id:string) {
+    const {data}=await supabase.from('reviews').select('*').eq('place_id',id).order('created_at',{ascending:false})
+    setReviews(data||[])
+  }
+
+  async function loadComments(postId:string) {
+    const {data}=await supabase.from('post_comments').select('*').eq('post_id',postId).order('created_at',{ascending:true})
+    setPostComments(data||[])
+  }
+
+  async function pickImage() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if(!perm.granted) { Alert.alert('','사진 접근 권한이 필요합니다'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, aspect:[4,3], quality:0.7,
+    })
+    if(result.canceled) return
+    const uri = result.assets[0].uri
+    setPostPhotoUploading(true)
+    try {
+      const fileName = `post_${Date.now()}.jpg`
+      const response = await fetch(uri)
+      const blob = await response.blob()
+      const {error} = await supabase.storage.from('community-photos').upload(fileName, blob, { contentType:'image/jpeg', upsert:true })
+      if(error) throw error
+      const {data} = supabase.storage.from('community-photos').getPublicUrl(fileName)
+      setPostPhoto(data.publicUrl)
+    } catch(e) {
+      Alert.alert('오류','사진 업로드에 실패했습니다')
+    }
+    setPostPhotoUploading(false)
+  }
+
+  async function submitPost() {
+    if(!postTitle.trim()) { Alert.alert('','제목을 입력해주세요'); return }
+    if(!postContent.trim()) { Alert.alert('','내용을 입력해주세요'); return }
+    setPostSubmitting(true)
+    const {error} = await supabase.from('posts').insert({
+      user_name:'나', nation:'✍️', title:postTitle.trim(),
+      content:postContent.trim(), city:postCity.trim()||null,
+      category:postCategory, likes:0,
+      photo_url: postPhoto || null,
+    })
+    if(!error) {
+      setPostTitle(''); setPostContent(''); setPostCity(''); setPostCategory('free'); setPostPhoto(null)
+      setShowWriteModal(false); await loadPosts()
+      Alert.alert('✅','게시글이 등록되었습니다!')
+    }
+    setPostSubmitting(false)
+  }
+
+  async function submitReview() {
+    if(reviewStar===0) { Alert.alert('','별점을 선택해주세요'); return }
+    if(!reviewText.trim()) { Alert.alert('','내용을 입력해주세요'); return }
+    setSubmitting(true)
+    const {error} = await supabase.from('reviews').insert({ place_id:selectedPlace.id, user_name:'나', rating:reviewStar, content:reviewText.trim() })
+    if(!error) { setReviewText(''); setReviewStar(0); setMyReviewCount(c=>c+1); await loadReviews(selectedPlace.id); Alert.alert('✅','등록 완료!') }
+    setSubmitting(false)
+  }
+
+  async function submitComment() {
+    if(!commentText.trim()) return
+    await supabase.from('post_comments').insert({
+      post_id:selectedPost.id, user_name:'나', content:commentText.trim(),
+      parent_id: replyTo?.id || null,
+    })
+    setCommentText(''); setReplyTo(null)
+    await loadComments(selectedPost.id)
+  }
+
+  async function likePost(post:any) {
+    await supabase.from('posts').update({likes:post.likes+1}).eq('id',post.id)
+    await loadPosts()
+    if(selectedPost?.id===post.id) setSelectedPost({...post, likes:post.likes+1})
+  }
+
+  const TRANSLATE_LANG_MAP: any = {
+    ko:'ko', en:'en', zh:'zh', ja:'ja', tw:'zh', th:'th',
+    vi:'vi', id:'id', ms:'ms', es:'es', fr:'fr', de:'de',
+    pt:'pt', ru:'ru', ar:'ar',
+  }
+
+  async function translateText(id:string, text:string) {
+    if(translations[id]) { setTranslations(t=>({...t,[id]:''})); return }
+    setTranslating(t=>({...t,[id]:true}))
+    try {
+      const targetLang = TRANSLATE_LANG_MAP[lang] || 'ko'
+      const res = await fetch('https://libretranslate.de/translate', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          q: text,
+          source: 'auto',
+          target: targetLang,
+          format: 'text',
+        }),
+      })
+      const data = await res.json()
+      const translated = data.translatedText || ''
+      if(!translated) throw new Error('translation failed')
+      setTranslations(t=>({...t,[id]:translated}))
+    } catch(e) {
+      Alert.alert('','번역에 실패했습니다')
+    }
+    setTranslating(t=>({...t,[id]:false}))
+  }
+
+  const openDetail = (p:any) => { setSelectedPlace(p); loadReviews(p.id); setReviewText(''); setReviewStar(0) }
+  const goHome = () => { setTab('explore'); setSelectedRegion(REGION_DATA[0]); setSelectedDistrict('전체'); setSelectedCat('all'); setSearchText('') }
+  const toggleSave = (id:string) => setSaved(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])
+  const openGoogleMaps = (place:any) => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.name+' '+place.address)}&travelmode=${routeTransport==='walk'?'walking':routeTransport==='taxi'?'driving':'transit'}`)
+  const routeData = ROUTES_DATA[routeTransport]
+  const regionLabel = selectedRegion.id==='all' ? `${selectedRegion.icon} 대한민국 전체` : `${selectedRegion.icon} ${selectedRegion.label}${selectedDistrict!=='전체'?' · '+selectedDistrict:''}`
+  const timeAgo = (ts:string) => { const m=Math.floor((Date.now()-new Date(ts).getTime())/60000); return m<60?`${m}분 전`:m<1440?`${Math.floor(m/60)}시간 전`:`${Math.floor(m/1440)}일 전` }
+
+  // 댓글 트리 구성
+  const topComments = postComments.filter(c=>!c.parent_id)
+  const getReplies = (parentId:string) => postComments.filter(c=>c.parent_id===parentId)
+
+  return (
+    <SafeAreaView style={s.safe}>
+      <View style={s.container}>
+
+        {/* 상단 바 */}
+        <View style={s.topbar}>
+          <TouchableOpacity onPress={goHome}><Text style={s.logo}>K<Text style={s.logoEm}>컬쳐</Text>MAP</Text></TouchableOpacity>
+          <View style={s.searchBar}>
+            <Text style={s.searchIcon}>🔍</Text>
+            <TextInput style={s.searchInput} placeholder={L.search} placeholderTextColor="rgba(255,255,255,0.4)" value={searchText} onChangeText={setSearchText} />
+          </View>
+          <TouchableOpacity style={s.langBtn} onPress={()=>setShowLangModal(true)}>
+            <Text style={{fontSize:18}}>{LANGS[lang]?.flag||'🌐'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 탐색 탭 */}
+        {tab==='explore' && (
+          <View style={{flex:1}}>
+            <TouchableOpacity style={s.regionBar} onPress={()=>{setTempRegion(selectedRegion);setShowRegionModal(true)}}>
+              <Text style={s.regionBarText}>{regionLabel}</Text>
+              <Text style={s.regionBarArrow}>▼</Text>
+            </TouchableOpacity>
+            <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false}>
+              {CAT_GROUPS.map(group=>(
+                <View key={group.label} style={s.catSection}>
+                  {group.label!==''&&<Text style={s.catGroupLabel}>{group.label}</Text>}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catScroll}>
+                    {group.items.map(cat=>(
+                      <TouchableOpacity key={cat.key} onPress={()=>setSelectedCat(cat.key)} style={[s.catPill,selectedCat===cat.key&&{backgroundColor:cat.color,borderColor:cat.color}]}>
+                        <Text style={[s.catPillText,selectedCat===cat.key&&s.catPillTextActive]}>{cat.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              ))}
+              <View style={s.mapPlaceholder}>
+                <Text style={{fontSize:26,marginBottom:6}}>🗺</Text>
+                <Text style={{color:'#888',fontSize:12,marginBottom:8}}>{regionLabel}</Text>
+                <TouchableOpacity style={s.mapOpenBtn} onPress={()=>Linking.openURL(`https://www.google.com/maps/search/${encodeURIComponent(selectedRegion.id==='all'?'한국 관광지':selectedRegion.label)}`)}>
+                  <Text style={s.mapOpenBtnText}>🗺 {L.open_map}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={s.mauBanner}>
+                <Text style={s.mauTag}>🌱 서비스 오픈 기념</Text>
+                <Text style={s.mauTitle}>완전 무료 · 광고 없는 K컬처MAP</Text>
+                <Text style={s.mauDesc}>지금은 여러분의 리뷰와 추천이 가장 소중합니다</Text>
+                <View style={s.mauProgressLabel}><Text style={s.mauProgressText}>{L.mau}</Text><Text style={s.mauProgressText}>{mauCount.toLocaleString()} / {mauGoal.toLocaleString()}명</Text></View>
+                <View style={s.mauBar}><View style={[s.mauFill,{width:`${(mauCount/mauGoal)*100}%` as any}]}/></View>
+              </View>
+              {loading ? <View style={s.center}><ActivityIndicator size="large" color="#C8102E"/></View> : (
+                <View>
+                  {places.filter(p=>p.featured).length>0&&<>
+                    <Text style={s.secTitle}>🔥 {L.featured}</Text>
+                    {places.filter(p=>p.featured).map((p:any)=>(
+                      <TouchableOpacity key={p.id} style={s.featCard} onPress={()=>openDetail(p)}>
+                        <View style={[s.cardImg,{backgroundColor:CAT_BG[p.category]||'#f5f0e8'}]}>
+                          <Text style={{fontSize:54}}>{p.emoji}</Text>
+                          <TouchableOpacity style={[s.heartBtn,saved.includes(p.id)&&s.heartSaved]} onPress={()=>toggleSave(p.id)}><Text style={{color:'#fff',fontSize:14}}>♥</Text></TouchableOpacity>
+                        </View>
+                        <View style={s.cardBody}>
+                          <Text style={s.cardName}>{p.name}</Text>
+                          <View style={s.cardMeta}><Text style={s.stars}>{'★'.repeat(Math.floor(p.rating))}</Text><Text style={s.metaText}> {p.rating}</Text><Text style={[s.metaText,{color:p.is_open?'#1A7A4A':'#C8102E'}]}>{' · '}{p.is_open?L.open:L.closed}</Text></View>
+                          {(p.hours||p.price_range)&&<View style={s.chipRow}>{p.hours&&<View style={s.chipHours}><Text style={s.chipHoursText}>🕐 {p.hours}</Text></View>}{p.price_range&&<View style={s.chipPrice}><Text style={s.chipPriceText}>💰 {p.price_range}</Text></View>}</View>}
+                          <Text style={s.cardAddr}>{p.address}{p.district?' · '+p.district:''}</Text>
+                          <View style={s.cardActions}>
+                            <TouchableOpacity style={s.btnRoute} onPress={()=>{setSelectedPlace(p);setShowRouteModal(true)}}><Text style={s.btnRouteText}>🗺 {L.route}</Text></TouchableOpacity>
+                            <TouchableOpacity style={s.btnReview} onPress={()=>openDetail(p)}><Text style={s.btnReviewText}>💬 {L.review}</Text></TouchableOpacity>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </>}
+                  <Text style={s.secTitle}>📋 {L.all_list}</Text>
+                  {places.length===0&&<Text style={s.emptyText}>해당 조건의 장소가 없습니다</Text>}
+                  {places.filter(p=>!p.featured).map((p:any)=>(
+                    <TouchableOpacity key={p.id} style={s.listCard} onPress={()=>openDetail(p)}>
+                      <View style={[s.listThumb,{backgroundColor:CAT_BG[p.category]||'#f5f0e8'}]}><Text style={{fontSize:26}}>{p.emoji}</Text></View>
+                      <View style={s.listInfo}>
+                        <Text style={s.listName}>{p.name}</Text>
+                        <Text style={s.listAddr}>{p.address}{p.district?' · '+p.district:''}</Text>
+                        <View style={s.tagRow}>
+                          <View style={[s.tag,p.is_open?s.tagOpen:s.tagClosed]}><Text style={[s.tagText,{color:p.is_open?'#166534':'#991b1b'}]}>{p.is_open?L.open:L.closed}</Text></View>
+                          {p.hours&&<View style={s.tag}><Text style={s.tagText}>{p.hours}</Text></View>}
+                          {p.price_range&&<View style={s.tag}><Text style={s.tagText}>{p.price_range}</Text></View>}
+                        </View>
+                      </View>
+                      <View style={s.listRight}>
+                        <View style={s.ratingChip}><Text style={s.ratingChipText}>⭐{p.rating}</Text></View>
+                        <TouchableOpacity onPress={()=>toggleSave(p.id)}><Text style={[s.heartSmall,saved.includes(p.id)&&s.heartSmallSaved]}>♥</Text></TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  <View style={{height:20}}/>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* AI 탭 */}
+        {tab==='ai'&&(
+          <View style={s.aiContainer}>
+            <Text style={s.pageTitle}>✨ {L.nav_ai}</Text>
+            <View style={s.aiBox}>
+              <Text style={s.aiTitle}>🤖 맞춤 장소 추천</Text>
+              <Text style={s.aiDesc}>저장한 장소와 리뷰를 분석해서{'\n'}딱 맞는 곳을 추천해드릴게요</Text>
+              <View style={s.aiChips}>{[L.cat_food,L.cat_spot,L.cat_cafe,L.cat_night].map(chip=><TouchableOpacity key={chip} style={s.aiChip}><Text style={s.aiChipText}>{chip}</Text></TouchableOpacity>)}</View>
+            </View>
+            <Text style={s.aiSoon}>AI 추천 기능은 다음 단계에서 추가됩니다 🚀</Text>
+          </View>
+        )}
+
+        {/* 커뮤니티 탭 */}
+        {tab==='community'&&(
+          <View style={{flex:1}}>
+            <View style={s.communityHeader}>
+              <View><Text style={s.communityTitle}>{L.community_title}</Text><Text style={s.communitySub}>{L.community_sub}</Text></View>
+              <TouchableOpacity style={s.writeBtn} onPress={()=>setShowWriteModal(true)}><Text style={s.writeBtnText}>✏️ {L.write_post}</Text></TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.postFilterRow}>
+              {[{key:'latest',label:L.latest},{key:'best',label:`🏆 ${L.best}`},{key:'food',label:L.food_post},{key:'spot',label:L.spot_post},{key:'cafe',label:L.cafe_post},{key:'free',label:L.free_post}].map(f=>(
+                <TouchableOpacity key={f.key} style={[s.postFilterBtn,postFilter===f.key&&s.postFilterBtnActive]} onPress={()=>setPostFilter(f.key)}>
+                  <Text style={[s.postFilterText,postFilter===f.key&&s.postFilterTextActive]}>{f.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {postsLoading?<View style={s.center}><ActivityIndicator size="large" color="#C8102E"/></View>:(
+              <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false}>
+                {posts.length===0&&<Text style={s.emptyText}>첫 번째 글을 작성해보세요!</Text>}
+                {posts.filter(p=>postFilter==='latest'||postFilter==='best'?true:p.category===postFilter).map((post:any)=>(
+                  <TouchableOpacity key={post.id} style={s.postCard} onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
+                    {post.likes>=30&&<View style={s.bestBadge}><Text style={s.bestBadgeText}>🏆 BEST</Text></View>}
+                    <View style={s.postHeader}>
+                      <View style={[s.postAvatar,{backgroundColor:getAvatarColor(post.user_name)}]}><Text style={s.postAvatarText}>{post.user_name[0]}</Text></View>
+                      <View style={{flex:1}}>
+                        <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+                          <Text style={s.postUser}>{post.user_name}</Text><Text style={s.postNation}>{post.nation}</Text>
+                          {post.city&&<View style={s.postCityTag}><Text style={s.postCityTagText}>📍{post.city}</Text></View>}
+                        </View>
+                        <Text style={s.postTime}>{timeAgo(post.created_at)}</Text>
+                      </View>
+                    </View>
+                    <Text style={s.postTitle}>{post.title}</Text>
+                    {/* 미리보기 이미지 */}
+                    {post.photo_url&&<Image source={{uri:post.photo_url}} style={s.postPreviewImg} resizeMode="cover"/>}
+                    <Text style={s.postContent} numberOfLines={2}>{post.content}</Text>
+                    <View style={s.postFooter}>
+                      <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(post)}><Text style={s.likeBtnText}>👍 {post.likes}</Text></TouchableOpacity>
+                      <Text style={s.commentCount}>💬 {L.comments}</Text>
+                      {/* 번역 버튼 */}
+                      <TouchableOpacity style={s.translateBtn} onPress={()=>translateText(`post_${post.id}`,post.title+'\n'+post.content)}>
+                        <Text style={s.translateBtnText}>{translating[`post_${post.id}`]?L.translating:`🌐 ${L.translate}`}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {translations[`post_${post.id}`]&&<View style={s.translatedBox}><Text style={s.translatedText}>{translations[`post_${post.id}`]}</Text></View>}
+                  </TouchableOpacity>
+                ))}
+                <View style={{height:20}}/>
+              </ScrollView>
+            )}
+          </View>
+        )}
+
+        {/* 나 탭 */}
+        {tab==='profile'&&(
+          <ScrollView style={{flex:1}}>
+            <View style={s.profileHeader}>
+              <View style={s.profileAvatar}><Text style={{fontSize:30}}>✈️</Text></View>
+              <Text style={s.profileName}>Korea Explorer</Text>
+              <Text style={s.profileSub}>K컬처MAP 여행자</Text>
+              <View style={s.statRow}>
+                <View style={s.statCell}><Text style={s.statVal}>{myReviewCount}</Text><Text style={s.statKey}>{L.review}</Text></View>
+                <View style={s.statCell}><Text style={s.statVal}>{saved.length}</Text><Text style={s.statKey}>{L.saving}</Text></View>
+                <View style={s.statCell}><Text style={s.statVal}>{places.length}</Text><Text style={s.statKey}>{L.nav_explore}</Text></View>
+                <View style={s.statCell}><Text style={s.statVal}>{myPosts.length}</Text><Text style={s.statKey}>{L.my_posts}</Text></View>
+              </View>
+            </View>
+            <View style={{padding:16}}>
+              <Text style={s.sectionTitle}>✏️ {L.my_posts}</Text>
+              {myPosts.length===0?<Text style={s.emptyText}>{L.no_posts}</Text>:myPosts.map((post:any)=>(
+                <TouchableOpacity key={post.id} style={s.myPostCard} onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
+                  {post.photo_url&&<Image source={{uri:post.photo_url}} style={s.myPostImg} resizeMode="cover"/>}
+                  <Text style={s.myPostTitle}>{post.title}</Text>
+                  <View style={{flexDirection:'row',justifyContent:'space-between',marginTop:6}}>
+                    <Text style={s.myPostMeta}>{post.city||'전체'} · {timeAgo(post.created_at)}</Text>
+                    <Text style={s.myPostLikes}>👍 {post.likes}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        )}
+
+        {/* 하단 탭바 */}
+        <View style={s.tabBar}>
+          {[{key:'explore',icon:'🗺',label:L.nav_explore},{key:'ai',icon:'✨',label:L.nav_ai},{key:'community',icon:'💬',label:L.nav_community},{key:'profile',icon:'👤',label:L.nav_me}].map(t=>(
+            <TouchableOpacity key={t.key} style={s.tabBtn} onPress={()=>setTab(t.key)}>
+              <Text style={[s.tabIcon,tab===t.key&&s.tabIconActive]}>{t.icon}</Text>
+              <Text style={[s.tabLabel,tab===t.key&&s.tabLabelActive]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* 글쓰기 모달 */}
+        <Modal visible={showWriteModal} animationType="slide" onRequestClose={()=>setShowWriteModal(false)}>
+          <SafeAreaView style={{flex:1,backgroundColor:'#F8F5F0'}}>
+            <View style={s.writeModalHeader}>
+              <TouchableOpacity onPress={()=>setShowWriteModal(false)}><Text style={{fontSize:20,color:'#666'}}>✕</Text></TouchableOpacity>
+              <Text style={s.writeModalTitle}>✏️ {L.write_post}</Text>
+              <TouchableOpacity onPress={submitPost} disabled={postSubmitting}><Text style={[s.writeModalSubmit,postSubmitting&&{opacity:0.5}]}>{L.post_submit}</Text></TouchableOpacity>
+            </View>
+            <ScrollView style={{padding:16}}>
+              <View style={s.postCatRow}>
+                {[{k:'food',label:L.food_post},{k:'spot',label:L.spot_post},{k:'cafe',label:L.cafe_post},{k:'free',label:L.free_post}].map(c=>(
+                  <TouchableOpacity key={c.k} style={[s.postCatBtn,postCategory===c.k&&s.postCatBtnActive]} onPress={()=>setPostCategory(c.k)}>
+                    <Text style={[s.postCatText,postCategory===c.k&&s.postCatTextActive]}>{c.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput style={s.writeTitleInput} placeholder={L.post_title} value={postTitle} onChangeText={setPostTitle} placeholderTextColor="#bbb"/>
+              <TextInput style={s.writeCityInput} placeholder={L.post_city} value={postCity} onChangeText={setPostCity} placeholderTextColor="#bbb"/>
+
+              {/* 사진 추가 버튼 */}
+              <TouchableOpacity style={s.addPhotoBtn} onPress={pickImage} disabled={postPhotoUploading}>
+                {postPhotoUploading
+                  ? <ActivityIndicator size="small" color="#C8102E"/>
+                  : <Text style={s.addPhotoBtnText}>📷 {L.add_photo}</Text>
+                }
+              </TouchableOpacity>
+
+              {/* 사진 미리보기 */}
+              {postPhoto&&(
+                <View style={{marginBottom:12,position:'relative'}}>
+                  <Image source={{uri:postPhoto}} style={s.photoPreview} resizeMode="cover"/>
+                  <TouchableOpacity style={s.removePhotoBtn} onPress={()=>setPostPhoto(null)}>
+                    <Text style={{color:'#fff',fontSize:14,fontWeight:'700'}}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <TextInput style={s.writeContentInput} placeholder={L.post_content} value={postContent} onChangeText={setPostContent} multiline placeholderTextColor="#bbb"/>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
+        {/* 게시글 상세 모달 */}
+        <Modal visible={!!selectedPost} animationType="slide" onRequestClose={()=>{setSelectedPost(null);setReplyTo(null)}}>
+          {selectedPost&&(
+            <SafeAreaView style={{flex:1,backgroundColor:'#F8F5F0'}}>
+              <View style={s.writeModalHeader}>
+                <TouchableOpacity onPress={()=>{setSelectedPost(null);setReplyTo(null)}}><Text style={{fontSize:20,color:'#666'}}>←</Text></TouchableOpacity>
+                <Text style={s.writeModalTitle}>{L.community_title}</Text>
+                <View style={{width:24}}/>
+              </View>
+              <ScrollView style={{flex:1}}>
+                <View style={s.postDetailCard}>
+                  <View style={s.postHeader}>
+                    <View style={[s.postAvatar,{backgroundColor:getAvatarColor(selectedPost.user_name)}]}><Text style={s.postAvatarText}>{selectedPost.user_name[0]}</Text></View>
+                    <View>
+                      <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+                        <Text style={s.postUser}>{selectedPost.user_name}</Text><Text style={s.postNation}>{selectedPost.nation}</Text>
+                        {selectedPost.city&&<View style={s.postCityTag}><Text style={s.postCityTagText}>📍{selectedPost.city}</Text></View>}
+                      </View>
+                      <Text style={s.postTime}>{timeAgo(selectedPost.created_at)}</Text>
+                    </View>
+                  </View>
+                  <Text style={s.postDetailTitle}>{selectedPost.title}</Text>
+                  {/* 상세 이미지 */}
+                  {selectedPost.photo_url&&<Image source={{uri:selectedPost.photo_url}} style={s.postDetailImg} resizeMode="cover"/>}
+                  <Text style={s.postDetailContent}>{selectedPost.content}</Text>
+                  <View style={{flexDirection:'row',gap:10,marginTop:12}}>
+                    <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(selectedPost)}><Text style={s.likeBtnText}>👍 {L.likes} {selectedPost.likes}</Text></TouchableOpacity>
+                    <TouchableOpacity style={s.translateBtn} onPress={()=>translateText(`detail_${selectedPost.id}`,selectedPost.title+'\n'+selectedPost.content)}>
+                      <Text style={s.translateBtnText}>{translating[`detail_${selectedPost.id}`]?L.translating:`🌐 ${L.translate}`}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {translations[`detail_${selectedPost.id}`]&&<View style={s.translatedBox}><Text style={s.translatedText}>{translations[`detail_${selectedPost.id}`]}</Text></View>}
+                </View>
+
+                {/* 댓글 + 대댓글 */}
+                <View style={{padding:16}}>
+                  <Text style={s.sectionTitle}>💬 {L.comments} {postComments.length}</Text>
+                  {topComments.map((c:any)=>(
+                    <View key={c.id}>
+                      {/* 댓글 */}
+                      <View style={s.commentCard}>
+                        <View style={[s.commentAvatar,{backgroundColor:getAvatarColor(c.user_name)}]}><Text style={{color:'#fff',fontSize:11,fontWeight:'700'}}>{c.user_name[0]}</Text></View>
+                        <View style={{flex:1}}>
+                          <Text style={s.commentUser}>{c.user_name}</Text>
+                          <Text style={s.commentContent}>{c.content}</Text>
+                          <View style={{flexDirection:'row',gap:10,marginTop:4}}>
+                            <Text style={s.commentTime}>{timeAgo(c.created_at)}</Text>
+                            <TouchableOpacity onPress={()=>setReplyTo(c)}><Text style={s.replyBtn}>↩ {L.reply}</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={()=>translateText(`comment_${c.id}`,c.content)}><Text style={s.replyBtn}>{translating[`comment_${c.id}`]?'...':'🌐'}</Text></TouchableOpacity>
+                          </View>
+                          {translations[`comment_${c.id}`]&&<View style={[s.translatedBox,{marginTop:4}]}><Text style={s.translatedText}>{translations[`comment_${c.id}`]}</Text></View>}
+                        </View>
+                      </View>
+                      {/* 대댓글 */}
+                      {getReplies(c.id).map((r:any)=>(
+                        <View key={r.id} style={s.replyCard}>
+                          <Text style={s.replyLine}>│</Text>
+                          <View style={[s.commentAvatar,{backgroundColor:getAvatarColor(r.user_name),width:24,height:24,borderRadius:12}]}><Text style={{color:'#fff',fontSize:9,fontWeight:'700'}}>{r.user_name[0]}</Text></View>
+                          <View style={{flex:1}}>
+                            <Text style={s.commentUser}>{r.user_name}</Text>
+                            <Text style={s.commentContent}>{r.content}</Text>
+                            <View style={{flexDirection:'row',gap:10,marginTop:4}}>
+                              <Text style={s.commentTime}>{timeAgo(r.created_at)}</Text>
+                              <TouchableOpacity onPress={()=>translateText(`reply_${r.id}`,r.content)}><Text style={s.replyBtn}>{translating[`reply_${r.id}`]?'...':'🌐'}</Text></TouchableOpacity>
+                            </View>
+                            {translations[`reply_${r.id}`]&&<View style={[s.translatedBox,{marginTop:4}]}><Text style={s.translatedText}>{translations[`reply_${r.id}`]}</Text></View>}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+
+              {/* 대댓글 표시 + 댓글 입력 */}
+              {replyTo&&(
+                <View style={s.replyToBar}>
+                  <Text style={s.replyToText}>↩ {L.reply_to} {replyTo.user_name}</Text>
+                  <TouchableOpacity onPress={()=>setReplyTo(null)}><Text style={{color:'#aaa',fontSize:16}}>✕</Text></TouchableOpacity>
+                </View>
+              )}
+              <View style={s.commentInputRow}>
+                <TextInput style={s.commentInput} placeholder={replyTo?L.write_reply:L.comments+'...'} value={commentText} onChangeText={setCommentText} placeholderTextColor="#bbb"/>
+                <TouchableOpacity style={s.commentSubmitBtn} onPress={submitComment}>
+                  <Text style={{color:'#fff',fontWeight:'700',fontSize:13}}>↑</Text>
+                </TouchableOpacity>
+              </View>
+            </SafeAreaView>
+          )}
+        </Modal>
+
+        {/* 지역 선택 모달 */}
+        <Modal visible={showRegionModal} animationType="slide" onRequestClose={()=>setShowRegionModal(false)}>
+          <SafeAreaView style={s.regionModalSafe}>
+            <View style={s.regionModalHeader}>
+              <TouchableOpacity onPress={()=>setShowRegionModal(false)}><Text style={s.regionModalClose}>✕</Text></TouchableOpacity>
+              <Text style={s.regionModalTitle}>{L.region_select}</Text>
+              <View style={{width:24}}/>
+            </View>
+            <View style={s.regionBody}>
+              <ScrollView style={s.regionLeft} showsVerticalScrollIndicator={false}>
+                {REGION_DATA.map(region=>(
+                  <TouchableOpacity key={region.id} style={[s.regionLeftItem,tempRegion.id===region.id&&s.regionLeftItemActive]} onPress={()=>setTempRegion(region)}>
+                    <Text style={[s.regionLeftText,tempRegion.id===region.id&&s.regionLeftTextActive]}>{region.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <ScrollView style={s.regionRight} showsVerticalScrollIndicator={false}>
+                <TouchableOpacity style={s.regionRightHeader} onPress={()=>{setSelectedRegion(tempRegion);setSelectedDistrict('전체');setShowRegionModal(false)}}>
+                  <Text style={s.regionRightHeaderText}>{tempRegion.label} {L.all_region}</Text>
+                  <Text style={s.regionRightArrow}>›</Text>
+                </TouchableOpacity>
+                {tempRegion.districts.map((d:string)=>(
+                  <TouchableOpacity key={d} style={[s.regionRightItem,selectedDistrict===d&&selectedRegion.id===tempRegion.id&&s.regionRightItemActive]} onPress={()=>{setSelectedRegion(tempRegion);setSelectedDistrict(d);setShowRegionModal(false)}}>
+                    <Text style={[s.regionRightText,selectedDistrict===d&&selectedRegion.id===tempRegion.id&&s.regionRightTextActive]}>{d}</Text>
+                  </TouchableOpacity>
+                ))}
+                {tempRegion.id==='all'&&<Text style={s.regionAllDesc}>전국의 모든 장소를 탐색합니다</Text>}
+              </ScrollView>
+            </View>
+          </SafeAreaView>
+        </Modal>
+
+        {/* 언어 선택 모달 */}
+        <Modal visible={showLangModal} transparent animationType="slide" onRequestClose={()=>setShowLangModal(false)}>
+          <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={()=>setShowLangModal(false)}>
+            <ScrollView style={s.langPanel} showsVerticalScrollIndicator={false}>
+              <View style={s.langHandle}/>
+              <Text style={s.langPanelTitle}>🌐 언어 선택 / Language</Text>
+              {[{region:'동아시아 East Asia',codes:['ko','en','zh','ja','tw','th']},{region:'동남아시아 SE Asia',codes:['vi','id','ms']},{region:'서구권 Western',codes:['es','fr','de','pt','ru','ar']}].map(group=>(
+                <View key={group.region}>
+                  <Text style={s.langRegion}>{group.region}</Text>
+                  <View style={s.langGrid}>
+                    {group.codes.map(code=>LANGS[code]?(
+                      <TouchableOpacity key={code} style={[s.langOpt,lang===code&&s.langOptActive]} onPress={()=>{setLang(code);setShowLangModal(false)}}>
+                        <Text style={{fontSize:22}}>{LANGS[code].flag}</Text>
+                        <Text style={[s.langOptName,lang===code&&{color:'#fff'}]}>{LANGS[code].name}</Text>
+                      </TouchableOpacity>
+                    ):null)}
+                  </View>
+                </View>
+              ))}
+              <View style={{height:30}}/>
+            </ScrollView>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* 길찾기 모달 */}
+        <Modal visible={showRouteModal} transparent animationType="slide" onRequestClose={()=>setShowRouteModal(false)}>
+          <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={()=>setShowRouteModal(false)}>
+            <View style={s.routePanel}>
+              <View style={s.langHandle}/>
+              <Text style={s.routeTitle}>🗺 {selectedPlace?.name}</Text>
+              <Text style={s.routeSub}>{selectedPlace?.address}</Text>
+              <View style={s.transportRow}>
+                {(['subway','bus','taxi','walk'] as const).map(tr=>(
+                  <TouchableOpacity key={tr} style={[s.trTab,routeTransport===tr&&s.trTabActive]} onPress={()=>setRouteTransport(tr)}>
+                    <Text style={{fontSize:15}}>{tr==='subway'?'🚇':tr==='bus'?'🚌':tr==='taxi'?'🚕':'🚶'}</Text>
+                    <Text style={[s.trTabText,routeTransport===tr&&s.trTabTextActive]}>{tr==='subway'?L.subway:tr==='bus'?L.bus:tr==='taxi'?L.taxi:L.walk}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={s.routeInfoRow}>
+                <View style={s.routeInfoCell}><Text style={s.routeInfoVal}>{routeData.time}</Text><Text style={s.routeInfoKey}>{L.time}</Text></View>
+                <View style={s.routeInfoCell}><Text style={s.routeInfoVal}>{routeData.dist}</Text><Text style={s.routeInfoKey}>{L.dist}</Text></View>
+                <View style={s.routeInfoCell}><Text style={s.routeInfoVal}>{routeData.cost}</Text><Text style={s.routeInfoKey}>{L.fare}</Text></View>
+              </View>
+              {routeData.steps.map((st:any)=>(
+                <View key={st.n} style={s.routeStep}>
+                  <View style={s.stepNum}><Text style={{color:'#fff',fontSize:10,fontWeight:'700'}}>{st.n}</Text></View>
+                  <View><Text style={s.stepText}>{st.t}</Text>{!!st.m&&<Text style={s.stepMeta}>{st.m}</Text>}</View>
+                </View>
+              ))}
+              <TouchableOpacity style={s.openMapBtn} onPress={()=>{setShowRouteModal(false);if(selectedPlace)openGoogleMaps(selectedPlace)}}>
+                <Text style={s.openMapBtnText}>{L.open_map}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* 장소 상세 모달 */}
+        <Modal visible={!!selectedPlace} animationType="slide" onRequestClose={()=>setSelectedPlace(null)}>
+          {selectedPlace&&(
+            <View style={s.detailContainer}>
+              <View style={[s.detailImg,{backgroundColor:CAT_BG[selectedPlace.category]||'#f5f0e8'}]}>
+                <Text style={{fontSize:76}}>{selectedPlace.emoji}</Text>
+                <TouchableOpacity style={s.closeBtn} onPress={()=>setSelectedPlace(null)}><Text style={{color:'#fff',fontSize:16,fontWeight:'700'}}>✕</Text></TouchableOpacity>
+                <TouchableOpacity style={[s.detailHeart,saved.includes(selectedPlace.id)&&s.heartSaved]} onPress={()=>toggleSave(selectedPlace.id)}><Text style={{color:'#fff',fontSize:18}}>♥</Text></TouchableOpacity>
+              </View>
+              <ScrollView style={s.detailBody}>
+                <Text style={s.detailName}>{selectedPlace.name}</Text>
+                <View style={s.detailMetaRow}>
+                  <Text style={s.detailMeta}>⭐ {selectedPlace.rating} · {selectedPlace.city}</Text>
+                  {selectedPlace.district&&<Text style={s.detailMeta}> · {selectedPlace.district}</Text>}
+                  <Text style={[s.detailMeta,{color:selectedPlace.is_open?'#1A7A4A':'#C8102E',fontWeight:'600'}]}>{' · '}{selectedPlace.is_open?L.open:L.closed}</Text>
+                </View>
+                <View style={s.infoGrid}>
+                  {selectedPlace.hours&&<View style={s.infoChip}><Text style={s.infoLabel}>🕐 {L.hours}</Text><Text style={s.infoVal}>{selectedPlace.hours}</Text></View>}
+                  {selectedPlace.price_range&&<View style={s.infoChip}><Text style={s.infoLabel}>💰 {L.price}</Text><Text style={s.infoVal}>{selectedPlace.price_range}</Text></View>}
+                  <View style={[s.infoChip,{width:'100%'}]}><Text style={s.infoLabel}>📍 주소</Text><Text style={s.infoVal}>{selectedPlace.address}</Text></View>
+                </View>
+                <TouchableOpacity style={s.btnGmap} onPress={()=>openGoogleMaps(selectedPlace)}><Text style={s.btnGmapText}>🗺 {L.open_map}</Text></TouchableOpacity>
+                <Text style={s.sectionTitle}>💬 {L.review} {reviews.length}개</Text>
+                {reviews.length===0?<Text style={s.emptyReview}>첫 번째 리뷰를 남겨보세요!</Text>:reviews.map((r:any)=>(
+                  <View key={r.id} style={s.reviewCard}>
+                    <View style={s.reviewHeader}>
+                      <View style={[s.reviewAvatar,{backgroundColor:getAvatarColor(r.user_name||'익명')}]}><Text style={{color:'#fff',fontWeight:'700',fontSize:13}}>{(r.user_name||'익명')[0]}</Text></View>
+                      <View><Text style={s.reviewName}>{r.user_name||'익명'}</Text><Text style={s.reviewStars}>{'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}</Text></View>
+                    </View>
+                    <Text style={s.reviewContent}>{r.content}</Text>
+                  </View>
+                ))}
+                <Text style={s.sectionTitle}>✏️ {L.writeReview}</Text>
+                <View style={s.reviewForm}>
+                  <Text style={s.starLabel}>별점</Text>
+                  <View style={s.starRow}>{[1,2,3,4,5].map(st=><TouchableOpacity key={st} onPress={()=>setReviewStar(st)}><Text style={[s.star,st<=reviewStar&&s.starOn]}>★</Text></TouchableOpacity>)}</View>
+                  <TextInput style={[s.input,s.textarea]} placeholder="솔직한 후기를 남겨주세요..." value={reviewText} onChangeText={setReviewText} multiline placeholderTextColor="#bbb"/>
+                  <TouchableOpacity style={[s.submitBtn,submitting&&{opacity:0.6}]} onPress={submitReview} disabled={submitting}><Text style={s.submitBtnText}>{submitting?'등록 중...':L.submit}</Text></TouchableOpacity>
+                </View>
+                <View style={{height:40}}/>
+              </ScrollView>
+            </View>
+          )}
+        </Modal>
+
+      </View>
+    </SafeAreaView>
+  )
+}
+
+const s = StyleSheet.create({
+  safe:{flex:1,backgroundColor:'#0D1B2A'},
+  container:{flex:1,backgroundColor:'#F8F5F0'},
+  topbar:{backgroundColor:'#0D1B2A',height:54,flexDirection:'row',alignItems:'center',paddingHorizontal:14,gap:10},
+  logo:{fontSize:18,fontWeight:'900',color:'#fff',letterSpacing:2,flexShrink:0},
+  logoEm:{color:'#F5A623'},
+  searchBar:{flex:1,flexDirection:'row',alignItems:'center',backgroundColor:'rgba(255,255,255,0.13)',borderRadius:20,paddingHorizontal:12,height:34},
+  searchIcon:{fontSize:12,marginRight:6,opacity:0.5},
+  searchInput:{flex:1,color:'#fff',fontSize:12},
+  langBtn:{backgroundColor:'rgba(255,255,255,0.12)',borderRadius:8,padding:6,borderWidth:1,borderColor:'rgba(255,255,255,0.2)'},
+  regionBar:{backgroundColor:'#fff',flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#eee'},
+  regionBarText:{fontSize:14,fontWeight:'600',color:'#0D1B2A'},
+  regionBarArrow:{fontSize:11,color:'#aaa'},
+  catSection:{backgroundColor:'#F8F5F0',paddingHorizontal:14,paddingTop:7,paddingBottom:3},
+  catGroupLabel:{fontSize:9,fontWeight:'700',color:'#bbb',letterSpacing:0.5,marginBottom:5,textTransform:'uppercase' as const},
+  catScroll:{flexGrow:0},
+  catPill:{paddingHorizontal:12,paddingVertical:5,borderRadius:16,borderWidth:1.5,borderColor:'#ddd',backgroundColor:'#fff',marginRight:6},
+  catPillText:{fontSize:11,fontWeight:'500',color:'#666'},
+  catPillTextActive:{color:'#fff',fontWeight:'700'},
+  mapPlaceholder:{margin:14,borderRadius:14,backgroundColor:'#fff',height:88,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#eee'},
+  mapOpenBtn:{backgroundColor:'#0D1B2A',borderRadius:10,paddingHorizontal:16,paddingVertical:7},
+  mapOpenBtnText:{color:'#fff',fontSize:12,fontWeight:'600'},
+  mauBanner:{backgroundColor:'#0D1B2A',borderRadius:14,margin:14,padding:14},
+  mauTag:{fontSize:9,fontWeight:'700',color:'#F5A623',backgroundColor:'rgba(245,166,35,0.2)',paddingHorizontal:8,paddingVertical:2,borderRadius:8,alignSelf:'flex-start' as const,marginBottom:8},
+  mauTitle:{fontSize:14,fontWeight:'700',color:'#fff',marginBottom:4},
+  mauDesc:{fontSize:11,color:'rgba(255,255,255,0.65)',marginBottom:12},
+  mauProgressLabel:{flexDirection:'row',justifyContent:'space-between',marginBottom:5},
+  mauProgressText:{fontSize:10,color:'rgba(255,255,255,0.65)'},
+  mauBar:{backgroundColor:'rgba(255,255,255,0.15)',borderRadius:4,height:6,overflow:'hidden'},
+  mauFill:{height:'100%' as any,backgroundColor:'#F5A623',borderRadius:4},
+  secTitle:{fontSize:10,fontWeight:'700',color:'#aaa',letterSpacing:1,paddingHorizontal:14,paddingTop:12,paddingBottom:8,textTransform:'uppercase' as const},
+  featCard:{backgroundColor:'#fff',borderRadius:16,marginHorizontal:14,marginBottom:12,overflow:'hidden'},
+  cardImg:{height:148,alignItems:'center',justifyContent:'center',position:'relative'},
+  heartBtn:{position:'absolute',bottom:10,right:10,width:30,height:30,borderRadius:15,backgroundColor:'rgba(0,0,0,0.3)',alignItems:'center',justifyContent:'center'},
+  heartSaved:{backgroundColor:'#C8102E'},
+  cardBody:{padding:13},
+  cardName:{fontSize:16,fontWeight:'700',color:'#0D1B2A',marginBottom:4},
+  cardMeta:{flexDirection:'row',alignItems:'center',marginBottom:5},
+  stars:{color:'#F5A623',fontSize:12,letterSpacing:-1},
+  metaText:{fontSize:12,color:'#888'},
+  chipRow:{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:5},
+  chipHours:{backgroundColor:'#f0f4ff',borderRadius:8,paddingHorizontal:8,paddingVertical:3},
+  chipHoursText:{fontSize:10,color:'#1565C0'},
+  chipPrice:{backgroundColor:'#f0fff4',borderRadius:8,paddingHorizontal:8,paddingVertical:3},
+  chipPriceText:{fontSize:10,color:'#1A7A4A'},
+  cardAddr:{fontSize:11,color:'#bbb',marginBottom:10},
+  cardActions:{flexDirection:'row',gap:8},
+  btnRoute:{backgroundColor:'#0D1B2A',borderRadius:16,paddingHorizontal:14,paddingVertical:7},
+  btnRouteText:{color:'#fff',fontSize:12,fontWeight:'500'},
+  btnReview:{borderWidth:1.5,borderColor:'#0D1B2A',borderRadius:16,paddingHorizontal:14,paddingVertical:7},
+  btnReviewText:{fontSize:12,fontWeight:'500',color:'#0D1B2A'},
+  listCard:{flexDirection:'row',gap:10,backgroundColor:'#fff',borderRadius:12,padding:10,marginHorizontal:14,marginBottom:8,alignItems:'center'},
+  listThumb:{width:58,height:58,borderRadius:10,alignItems:'center',justifyContent:'center',flexShrink:0},
+  listInfo:{flex:1,minWidth:0},
+  listName:{fontSize:13,fontWeight:'700',marginBottom:2,color:'#0D1B2A'},
+  listAddr:{fontSize:10,color:'#aaa',marginBottom:4},
+  tagRow:{flexDirection:'row',flexWrap:'wrap',gap:4},
+  tag:{backgroundColor:'#f0ece3',borderRadius:7,paddingHorizontal:6,paddingVertical:2},
+  tagOpen:{backgroundColor:'#e8f5e9'},
+  tagClosed:{backgroundColor:'#fce4ec'},
+  tagText:{fontSize:9,fontWeight:'500',color:'#666'},
+  listRight:{alignItems:'flex-end',gap:5},
+  ratingChip:{backgroundColor:'#F5A623',borderRadius:7,paddingHorizontal:7,paddingVertical:2},
+  ratingChipText:{fontSize:11,fontWeight:'700',color:'#0D1B2A'},
+  heartSmall:{fontSize:16,color:'#ddd'},
+  heartSmallSaved:{color:'#C8102E'},
+  center:{padding:40,alignItems:'center'},
+  emptyText:{textAlign:'center',color:'#bbb',marginTop:40,fontSize:14,padding:20},
+  tabBar:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:0.5,borderTopColor:'#eee',paddingBottom:8},
+  tabBtn:{flex:1,alignItems:'center',paddingTop:10},
+  tabIcon:{fontSize:20,marginBottom:2},
+  tabIconActive:{},
+  tabLabel:{fontSize:10,color:'#aaa',fontWeight:'500'},
+  tabLabelActive:{color:'#C8102E',fontWeight:'700'},
+  pageTitle:{fontSize:22,fontWeight:'700',color:'#0D1B2A',padding:16,paddingTop:20},
+  aiContainer:{flex:1,padding:16},
+  aiBox:{backgroundColor:'#0D1B2A',borderRadius:16,padding:18,marginBottom:14},
+  aiTitle:{fontSize:15,fontWeight:'700',color:'#fff',marginBottom:6},
+  aiDesc:{fontSize:12,color:'rgba(255,255,255,0.65)',lineHeight:20,marginBottom:14},
+  aiChips:{flexDirection:'row',flexWrap:'wrap',gap:8},
+  aiChip:{backgroundColor:'rgba(245,166,35,0.18)',borderWidth:1,borderColor:'rgba(245,166,35,0.35)',borderRadius:14,paddingHorizontal:12,paddingVertical:6},
+  aiChipText:{color:'#F5A623',fontSize:12},
+  aiSoon:{textAlign:'center',color:'#aaa',fontSize:13},
+  communityHeader:{backgroundColor:'#fff',flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#eee'},
+  communityTitle:{fontSize:15,fontWeight:'700',color:'#0D1B2A'},
+  communitySub:{fontSize:11,color:'#aaa',marginTop:2},
+  writeBtn:{backgroundColor:'#C8102E',borderRadius:20,paddingHorizontal:14,paddingVertical:7},
+  writeBtnText:{color:'#fff',fontSize:12,fontWeight:'700'},
+  postFilterRow:{flexDirection:'row',backgroundColor:'#fff',borderBottomWidth:1,borderBottomColor:'#eee',paddingHorizontal:12,paddingVertical:6,flexGrow:0},
+  postFilterBtn:{paddingHorizontal:12,paddingVertical:5,borderRadius:14,backgroundColor:'#f5f0e8',marginRight:6},
+  postFilterBtnActive:{backgroundColor:'#C8102E'},
+  postFilterText:{fontSize:11,color:'#666',fontWeight:'500'},
+  postFilterTextActive:{color:'#fff',fontWeight:'700'},
+  postCard:{backgroundColor:'#fff',borderRadius:14,marginHorizontal:14,marginTop:10,padding:14,position:'relative'},
+  bestBadge:{position:'absolute',top:10,right:10,backgroundColor:'#F5A623',borderRadius:8,paddingHorizontal:8,paddingVertical:3},
+  bestBadgeText:{fontSize:9,fontWeight:'700',color:'#0D1B2A'},
+  postHeader:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:10},
+  postAvatar:{width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center'},
+  postAvatarText:{color:'#fff',fontWeight:'700',fontSize:14},
+  postUser:{fontSize:13,fontWeight:'700',color:'#0D1B2A'},
+  postNation:{fontSize:14},
+  postCityTag:{backgroundColor:'#f0f4ff',borderRadius:8,paddingHorizontal:6,paddingVertical:2},
+  postCityTagText:{fontSize:10,color:'#1565C0'},
+  postTime:{fontSize:11,color:'#bbb',marginTop:2},
+  postTitle:{fontSize:15,fontWeight:'700',color:'#0D1B2A',marginBottom:6},
+  postPreviewImg:{width:'100%',height:180,borderRadius:10,marginBottom:8},
+  postContent:{fontSize:13,color:'#555',lineHeight:20,marginBottom:10},
+  postFooter:{flexDirection:'row',alignItems:'center',gap:8,flexWrap:'wrap'},
+  likeBtn:{backgroundColor:'#f0f4ff',borderRadius:16,paddingHorizontal:14,paddingVertical:6},
+  likeBtnText:{fontSize:12,color:'#1565C0',fontWeight:'600'},
+  commentCount:{fontSize:12,color:'#aaa'},
+  translateBtn:{backgroundColor:'#f5f0e8',borderRadius:14,paddingHorizontal:12,paddingVertical:6},
+  translateBtnText:{fontSize:11,color:'#8B5E3C',fontWeight:'600'},
+  translatedBox:{backgroundColor:'#fff8f0',borderRadius:10,padding:10,marginTop:8,borderLeftWidth:3,borderLeftColor:'#F5A623'},
+  translatedText:{fontSize:12,color:'#555',lineHeight:18},
+  addPhotoBtn:{backgroundColor:'#f0f4ff',borderRadius:12,padding:12,alignItems:'center',marginBottom:12,borderWidth:1.5,borderColor:'#1565C0',borderStyle:'dashed'},
+  addPhotoBtnText:{fontSize:13,color:'#1565C0',fontWeight:'600'},
+  photoPreview:{width:'100%',height:200,borderRadius:12,marginBottom:4},
+  removePhotoBtn:{position:'absolute',top:8,right:8,width:28,height:28,borderRadius:14,backgroundColor:'rgba(0,0,0,0.5)',alignItems:'center',justifyContent:'center'},
+  writeModalHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderBottomColor:'#eee',backgroundColor:'#fff'},
+  writeModalTitle:{fontSize:15,fontWeight:'700',color:'#0D1B2A'},
+  writeModalSubmit:{fontSize:14,fontWeight:'700',color:'#C8102E'},
+  postCatRow:{flexDirection:'row',gap:8,marginBottom:14,flexWrap:'wrap'},
+  postCatBtn:{paddingHorizontal:14,paddingVertical:7,borderRadius:16,borderWidth:1.5,borderColor:'#ddd',backgroundColor:'#fff'},
+  postCatBtnActive:{backgroundColor:'#C8102E',borderColor:'#C8102E'},
+  postCatText:{fontSize:12,color:'#666',fontWeight:'500'},
+  postCatTextActive:{color:'#fff',fontWeight:'700'},
+  writeTitleInput:{backgroundColor:'#fff',borderRadius:10,padding:14,fontSize:15,color:'#0D1B2A',marginBottom:10,borderWidth:1,borderColor:'#eee',fontWeight:'600'},
+  writeCityInput:{backgroundColor:'#fff',borderRadius:10,padding:12,fontSize:13,color:'#0D1B2A',marginBottom:10,borderWidth:1,borderColor:'#eee'},
+  writeContentInput:{backgroundColor:'#fff',borderRadius:10,padding:14,fontSize:14,color:'#0D1B2A',borderWidth:1,borderColor:'#eee',height:200,textAlignVertical:'top' as const},
+  postDetailCard:{backgroundColor:'#fff',margin:14,borderRadius:14,padding:16},
+  postDetailTitle:{fontSize:18,fontWeight:'700',color:'#0D1B2A',marginBottom:10},
+  postDetailImg:{width:'100%',height:220,borderRadius:12,marginBottom:12},
+  postDetailContent:{fontSize:14,color:'#444',lineHeight:22,marginBottom:16},
+  commentCard:{flexDirection:'row',gap:10,backgroundColor:'#fff',borderRadius:12,padding:12,marginBottom:6},
+  commentAvatar:{width:28,height:28,borderRadius:14,alignItems:'center',justifyContent:'center',flexShrink:0},
+  commentUser:{fontSize:12,fontWeight:'700',color:'#0D1B2A',marginBottom:3},
+  commentContent:{fontSize:13,color:'#444',lineHeight:18},
+  commentTime:{fontSize:10,color:'#bbb'},
+  replyBtn:{fontSize:11,color:'#1565C0',fontWeight:'600'},
+  replyCard:{flexDirection:'row',gap:8,paddingLeft:28,marginBottom:6,alignItems:'flex-start'},
+  replyLine:{fontSize:16,color:'#ddd',marginRight:4,lineHeight:28},
+  replyToBar:{backgroundColor:'#f0f4ff',paddingHorizontal:16,paddingVertical:8,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
+  replyToText:{fontSize:12,color:'#1565C0',fontWeight:'600'},
+  commentInputRow:{flexDirection:'row',gap:8,padding:12,backgroundColor:'#fff',borderTopWidth:0.5,borderTopColor:'#eee'},
+  commentInput:{flex:1,backgroundColor:'#F8F5F0',borderRadius:20,paddingHorizontal:14,paddingVertical:10,fontSize:13,color:'#0D1B2A',borderWidth:1,borderColor:'#eee'},
+  commentSubmitBtn:{width:40,height:40,borderRadius:20,backgroundColor:'#C8102E',alignItems:'center',justifyContent:'center'},
+  profileHeader:{backgroundColor:'#0D1B2A',padding:20,alignItems:'center'},
+  profileAvatar:{width:66,height:66,borderRadius:33,backgroundColor:'rgba(255,255,255,0.12)',alignItems:'center',justifyContent:'center',marginBottom:10,borderWidth:2,borderColor:'#F5A623'},
+  profileName:{fontSize:18,fontWeight:'700',color:'#fff',marginBottom:4},
+  profileSub:{fontSize:12,color:'rgba(255,255,255,0.55)',marginBottom:16},
+  statRow:{flexDirection:'row',backgroundColor:'rgba(255,255,255,0.08)',borderRadius:12,overflow:'hidden',width:'100%'},
+  statCell:{flex:1,alignItems:'center',paddingVertical:12},
+  statVal:{fontSize:16,fontWeight:'700',color:'#F5A623'},
+  statKey:{fontSize:9,color:'rgba(255,255,255,0.55)',marginTop:2},
+  myPostCard:{backgroundColor:'#fff',borderRadius:12,padding:14,marginBottom:8,overflow:'hidden'},
+  myPostImg:{width:'100%',height:120,borderRadius:8,marginBottom:8},
+  myPostTitle:{fontSize:14,fontWeight:'700',color:'#0D1B2A'},
+  myPostMeta:{fontSize:11,color:'#aaa'},
+  myPostLikes:{fontSize:11,color:'#1565C0',fontWeight:'600'},
+  sectionTitle:{fontSize:16,fontWeight:'700',color:'#0D1B2A',marginBottom:12},
+  regionModalSafe:{flex:1,backgroundColor:'#fff'},
+  regionModalHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderBottomColor:'#eee'},
+  regionModalClose:{fontSize:20,color:'#666'},
+  regionModalTitle:{fontSize:16,fontWeight:'700',color:'#0D1B2A'},
+  regionBody:{flex:1,flexDirection:'row'},
+  regionLeft:{width:110,backgroundColor:'#f5f5f5',borderRightWidth:1,borderRightColor:'#eee'},
+  regionLeftItem:{paddingVertical:14,paddingHorizontal:10,borderBottomWidth:1,borderBottomColor:'#eee'},
+  regionLeftItemActive:{backgroundColor:'#fff',borderLeftWidth:3,borderLeftColor:'#C8102E'},
+  regionLeftText:{fontSize:12,color:'#888',textAlign:'center' as const},
+  regionLeftTextActive:{color:'#C8102E',fontWeight:'700'},
+  regionRight:{flex:1,backgroundColor:'#fff'},
+  regionRightHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:20,paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#f0f0f0',backgroundColor:'#fafafa'},
+  regionRightHeaderText:{fontSize:14,fontWeight:'700',color:'#0D1B2A'},
+  regionRightArrow:{fontSize:18,color:'#aaa'},
+  regionRightItem:{paddingHorizontal:20,paddingVertical:15,borderBottomWidth:1,borderBottomColor:'#f5f5f5'},
+  regionRightItemActive:{backgroundColor:'#fff5f5'},
+  regionRightText:{fontSize:14,color:'#444'},
+  regionRightTextActive:{color:'#C8102E',fontWeight:'700'},
+  regionAllDesc:{padding:20,color:'#aaa',fontSize:13,textAlign:'center' as const},
+  modalOverlay:{flex:1,backgroundColor:'rgba(0,0,0,0.55)',justifyContent:'flex-end'},
+  langPanel:{backgroundColor:'#F8F5F0',borderTopLeftRadius:22,borderTopRightRadius:22,padding:20,maxHeight:'85%'},
+  langHandle:{width:38,height:4,backgroundColor:'#ddd',borderRadius:2,alignSelf:'center' as const,marginBottom:16},
+  langPanelTitle:{fontSize:15,fontWeight:'700',color:'#0D1B2A',marginBottom:14},
+  langRegion:{fontSize:10,fontWeight:'700',color:'#aaa',letterSpacing:0.5,marginBottom:8,marginTop:4,textTransform:'uppercase' as const},
+  langGrid:{flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:8},
+  langOpt:{backgroundColor:'#fff',borderWidth:1.5,borderColor:'#e8e2d8',borderRadius:12,padding:10,alignItems:'center',minWidth:90},
+  langOptActive:{backgroundColor:'#C8102E',borderColor:'#C8102E'},
+  langOptName:{fontSize:11,fontWeight:'700',color:'#0D1B2A',marginTop:4},
+  routePanel:{backgroundColor:'#F8F5F0',borderTopLeftRadius:22,borderTopRightRadius:22,padding:20,maxHeight:'80%'},
+  routeTitle:{fontSize:17,fontWeight:'700',color:'#0D1B2A',marginBottom:3},
+  routeSub:{fontSize:12,color:'#aaa',marginBottom:14},
+  transportRow:{flexDirection:'row',gap:6,marginBottom:14},
+  trTab:{flex:1,alignItems:'center',padding:9,borderRadius:10,borderWidth:1.5,borderColor:'#e0dbd2',backgroundColor:'#fff'},
+  trTabActive:{backgroundColor:'#0D1B2A',borderColor:'#0D1B2A'},
+  trTabText:{fontSize:10,color:'#666',marginTop:3},
+  trTabTextActive:{color:'#fff'},
+  routeInfoRow:{flexDirection:'row',backgroundColor:'#fff',borderRadius:11,padding:12,marginBottom:12},
+  routeInfoCell:{flex:1,alignItems:'center'},
+  routeInfoVal:{fontSize:15,fontWeight:'700',color:'#0D1B2A'},
+  routeInfoKey:{fontSize:10,color:'#bbb',marginTop:2},
+  routeStep:{flexDirection:'row',gap:9,paddingVertical:9,borderBottomWidth:1,borderBottomColor:'#f0ece4',alignItems:'flex-start'},
+  stepNum:{width:22,height:22,backgroundColor:'#0D1B2A',borderRadius:11,alignItems:'center',justifyContent:'center'},
+  stepText:{fontSize:13,color:'#444',lineHeight:20},
+  stepMeta:{fontSize:11,color:'#aaa',marginTop:1},
+  openMapBtn:{backgroundColor:'#1A7A4A',borderRadius:11,padding:14,alignItems:'center',marginTop:14},
+  openMapBtnText:{color:'#fff',fontSize:14,fontWeight:'700'},
+  detailContainer:{flex:1,backgroundColor:'#F8F5F0'},
+  detailImg:{height:230,alignItems:'center',justifyContent:'center',position:'relative'},
+  closeBtn:{position:'absolute',top:50,left:16,width:36,height:36,borderRadius:18,backgroundColor:'rgba(0,0,0,0.35)',alignItems:'center',justifyContent:'center'},
+  detailHeart:{position:'absolute',top:50,right:16,width:36,height:36,borderRadius:18,backgroundColor:'rgba(0,0,0,0.35)',alignItems:'center',justifyContent:'center'},
+  detailBody:{flex:1,padding:20},
+  detailName:{fontSize:25,fontWeight:'700',color:'#0D1B2A',marginBottom:6},
+  detailMetaRow:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',marginBottom:16},
+  detailMeta:{fontSize:14,color:'#888'},
+  infoGrid:{flexDirection:'row',flexWrap:'wrap',gap:10,marginBottom:16},
+  infoChip:{backgroundColor:'#fff',borderRadius:12,padding:13,width:'47%'},
+  infoLabel:{fontSize:11,color:'#aaa',marginBottom:4},
+  infoVal:{fontSize:14,fontWeight:'600',color:'#0D1B2A'},
+  btnGmap:{backgroundColor:'#1A7A4A',borderRadius:14,padding:16,alignItems:'center',marginBottom:22},
+  btnGmapText:{color:'#fff',fontSize:15,fontWeight:'700'},
+  emptyReview:{color:'#bbb',fontSize:13,textAlign:'center',paddingVertical:20,marginBottom:16},
+  reviewCard:{backgroundColor:'#fff',borderRadius:12,padding:14,marginBottom:10},
+  reviewHeader:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:8},
+  reviewAvatar:{width:32,height:32,borderRadius:16,alignItems:'center',justifyContent:'center'},
+  reviewName:{fontSize:13,fontWeight:'600',color:'#0D1B2A'},
+  reviewStars:{fontSize:12,color:'#F5A623',marginTop:1},
+  reviewContent:{fontSize:13,color:'#555',lineHeight:20},
+  reviewForm:{backgroundColor:'#fff',borderRadius:14,padding:16,marginBottom:10},
+  starLabel:{fontSize:12,color:'#aaa',marginBottom:8,fontWeight:'600'},
+  starRow:{flexDirection:'row',gap:8,marginBottom:14},
+  star:{fontSize:30,color:'#ddd'},
+  starOn:{color:'#F5A623'},
+  input:{backgroundColor:'#F8F5F0',borderRadius:10,padding:12,fontSize:14,color:'#0D1B2A',marginBottom:12,borderWidth:1,borderColor:'#eee'},
+  textarea:{height:100,textAlignVertical:'top' as const},
+  submitBtn:{backgroundColor:'#C8102E',borderRadius:12,padding:14,alignItems:'center',marginTop:4},
+  submitBtnText:{color:'#fff',fontSize:15,fontWeight:'700'},
+})
