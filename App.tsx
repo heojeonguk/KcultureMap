@@ -293,70 +293,41 @@ export default function App() {
     }
     setPostSubmitting(false)
   }
-  
-  async function deletePost(postId:string) {
+
+  async function deletePost(postId: string) {
     Alert.alert(
       '게시글 삭제',
       '정말 삭제하시겠습니까?',
       [
-        {text:'취소', onPress:()=>{}, style:'cancel'},
-        {text:'삭제', onPress:()=>confirmDelete(postId), style:'destructive'}
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase
+              .from('posts')
+              .delete()
+              .eq('id', postId)
+
+            console.log('삭제 결과:', { error, postId })
+
+            if (error) {
+              console.error('삭제 에러:', error)
+              Alert.alert('삭제 실패', error.message)
+            } else {
+              Alert.alert('성공', '게시글이 삭제되었습니다')
+              if (selectedPost?.id === postId) {
+                setSelectedPost(null)
+              }
+              await loadPosts()
+              await loadMyData()
+            }
+          }
+        }
       ]
     )
   }
-  
-  async function confirmDelete(postId:string) {
-    try {
-      setPostSubmitting(true)
-      console.log('🗑️ Starting delete for post:', postId)
-      
-      // 먼저 게시글이 존재하는지 확인
-      const { data: existingPost, error: fetchError } = await supabase
-        .from('posts')
-        .select('id, title')
-        .eq('id', postId)
-        .single()
-      
-      console.log('🔍 Post lookup result:', { existingPost, fetchError })
-      
-      if (fetchError || !existingPost) {
-        console.error('❌ Post not found:', fetchError)
-        Alert.alert('오류', '게시글을 찾을 수 없습니다')
-        return
-      }
-      
-      console.log('✅ Post found, proceeding with delete:', existingPost.title)
-      
-      const {error, data} = await supabase.from('posts').delete().eq('id', postId)
-      
-      console.log('🗑️ Delete operation result:', { error, data, postId })
-      console.log('🗑️ Error details:', error)
-      
-      if(!error) {
-        console.log('✅ Delete successful')
-        
-        // 현재 선택된 게시글이 삭제된 게시글이라면 닫기
-        if(selectedPost?.id === postId) {
-          setSelectedPost(null)
-        }
-        
-        // 게시글 목록 새로고침
-        await loadPosts()
-        await loadMyData()
-        
-        Alert.alert('✅', '게시글이 성공적으로 삭제되었습니다!')
-      } else {
-        console.error('❌ Delete error:', error)
-        Alert.alert('삭제 실패', `삭제 중 오류가 발생했습니다: ${error.message}`)
-      }
-    } catch(e) {
-      console.error('❌ Delete exception:', e)
-      Alert.alert('오류', '삭제 중 예기치 않은 오류가 발생했습니다')
-    } finally {
-      setPostSubmitting(false)
-    }
-  }
-  
+
   async function pickEditImage() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if(!perm.granted) { Alert.alert('','사진 접근 권한이 필요합니다'); return }
@@ -392,15 +363,25 @@ export default function App() {
         q = q.ilike('address', `%${selectedRegion.id}%`)
       } else {
         // 세부지역 선택 시 (속초, 강릉 등 또는 강남/역삼/삼성 등)
-        const districtKey = selectedDistrict.split('/')[0].trim() // '강남/역삼/삼성' → '강남'
+        const districtKey = selectedDistrict.split('/')[0].trim()
         q = q.ilike('address', `%${districtKey}%`)
       }
     }
     
+    // 카테고리 필터
     const catBase = selectedCat.split('_')[0]
-    if(selectedCat !== 'all') q = q.eq('category', catBase)
-    if(searchText.trim()) q = q.ilike('name', `%${searchText}%`)
-    const {data} = await q; setPlaces(data||[]); setLoading(false)
+    if(selectedCat !== 'all') {
+      q = q.eq('category', catBase)
+    }
+    
+    // 검색어 필터
+    if(searchText.trim()) {
+      q = q.ilike('name', `%${searchText}%`)
+    }
+    
+    const {data} = await q
+    setPlaces(data||[])
+    setLoading(false)
   }
 
   async function loadPosts() {
