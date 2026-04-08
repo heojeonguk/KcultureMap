@@ -250,7 +250,10 @@ export default function App() {
     { label:L.grp_activity, items:[{key:'activity',label:L.cat_activity,color:'#6B21A8'},{key:'activity_c',label:L.cat_cooking,color:'#6B21A8'},{key:'activity_s',label:L.cat_spa,color:'#6B21A8'},{key:'activity_n',label:L.cat_night,color:'#374151'}]},
   ]
 
-  useEffect(() => { loadPlaces() }, [selectedRegion, selectedDistrict, selectedCat, searchText])
+  useEffect(() => {
+    const timer = setTimeout(() => { loadPlaces() }, 100)
+    return () => clearTimeout(timer)
+  }, [selectedRegion, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
   useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
 
@@ -296,8 +299,8 @@ export default function App() {
 
   async function deletePost(postId: string) {
     Alert.alert(
-      '게시글 삭제',
       '정말 삭제하시겠습니까?',
+      '',
       [
         { text: '취소', style: 'cancel' },
         {
@@ -309,16 +312,12 @@ export default function App() {
               .delete()
               .eq('id', postId)
 
-            console.log('삭제 결과:', { error, postId })
-
             if (error) {
-              console.error('삭제 에러:', error)
               Alert.alert('삭제 실패', error.message)
+              console.error('삭제 에러:', error)
             } else {
-              Alert.alert('성공', '게시글이 삭제되었습니다')
-              if (selectedPost?.id === postId) {
-                setSelectedPost(null)
-              }
+              Alert.alert('삭제되었습니다', '')
+              if (selectedPost?.id === postId) setSelectedPost(null)
               await loadPosts()
               await loadMyData()
             }
