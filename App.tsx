@@ -5,7 +5,12 @@ import {
   Linking, TextInput, Alert, SafeAreaView, Image
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { supabase } from './lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  'https://zmukgjwdrorgprxzqlka.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdWtnandkcm9yZ3ByeHpxbGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTM1NTcsImV4cCI6MjA5MDk2OTU1N30.wkvf9hPPoWfP6d9L-kF8p11V4yq0tKwngypwzcvuEzA'
+)
 
 const LANGS: any = {
   ko:{ flag:'🇰🇷', name:'한국어',
@@ -381,15 +386,34 @@ export default function App() {
     setEditPhotoUploading(false)
   }
 
+  const REGION_CITY_MAP: any = {
+    강원: ['강릉','속초','춘천','원주','평창','태백'],
+    경상: ['대구','경주','포항','안동','창원','진주','울산'],
+    전라: ['광주','전주','여수','순천','목포'],
+    충청: ['대전','청주','천안'],
+  }
+
   async function loadPlaces() {
     setLoading(true)
     let q = supabase.from('places').select('*')
-    if(selectedRegion.id!=='all') q=q.eq('city',selectedRegion.id)
-    if(selectedDistrict!=='전체') q=q.eq('district',selectedDistrict)
-    const catBase=selectedCat.split('_')[0]
-    if(selectedCat!=='all') q=q.eq('category',catBase)
-    if(searchText.trim()) q=q.ilike('name',`%${searchText}%`)
-    const {data}=await q; setPlaces(data||[]); setLoading(false)
+    const cities = REGION_CITY_MAP[selectedRegion.id]
+    if(selectedRegion.id !== 'all' && selectedDistrict === '전체') {
+      if(cities) {
+        q = q.in('city', cities)
+      } else {
+        q = q.eq('city', selectedRegion.id)
+      }
+    } else if(selectedRegion.id !== 'all' && selectedDistrict !== '전체') {
+      // 지역별 전체 필터는 이미 선택된 동네로 충분히 좁혀집니다.
+      if(!cities) {
+        q = q.eq('city', selectedRegion.id)
+      }
+    }
+    if(selectedDistrict !== '전체') q = q.eq('district', selectedDistrict)
+    const catBase = selectedCat.split('_')[0]
+    if(selectedCat !== 'all') q = q.eq('category', catBase)
+    if(searchText.trim()) q = q.ilike('name', `%${searchText}%`)
+    const {data} = await q; setPlaces(data||[]); setLoading(false)
   }
 
   async function loadPosts() {
