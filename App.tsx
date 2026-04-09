@@ -386,7 +386,9 @@ export default function App() {
     setPostsLoading(true)
     let q=supabase.from('posts').select('*, post_comments(count)')
     q = postFilter==='best' ? q.order('likes',{ascending:false}) : q.order('created_at',{ascending:false})
-    const {data}=await q; setPosts(data||[]); setPostsLoading(false)
+    const {data}=await q
+    console.log('posts data sample:', JSON.stringify(data?.[0]))
+    setPosts(data||[]); setPostsLoading(false)
   }
 
   async function loadMyData() {
