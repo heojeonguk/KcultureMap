@@ -384,7 +384,7 @@ export default function App() {
 
   async function loadPosts() {
     setPostsLoading(true)
-    let q=supabase.from('posts').select('*')
+    let q=supabase.from('posts').select('*, post_comments(count)')
     q = postFilter==='best' ? q.order('likes',{ascending:false}) : q.order('created_at',{ascending:false})
     const {data}=await q; setPosts(data||[]); setPostsLoading(false)
   }
@@ -646,7 +646,10 @@ export default function App() {
             {postsLoading?<View style={s.center}><ActivityIndicator size="large" color="#C8102E"/></View>:(
               <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false}>
                 {posts.length===0&&<Text style={s.emptyText}>첫 번째 글을 작성해보세요!</Text>}
-                {posts.filter(p=>postFilter==='latest'||postFilter==='best'?true:p.category===postFilter).map((post:any)=>(
+                {posts.filter(p=>postFilter==='latest'||postFilter==='best'?true:p.category===postFilter).map((post:any)=>{
+                  const commentCount = post.post_comments?.[0]?.count ?? 0;
+                  const displayCount = commentCount >= 100 ? '99+' : commentCount;
+                  return (
                   <TouchableOpacity key={post.id} style={s.postCard} onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
                     {post.likes>=30&&<View style={s.bestBadge}><Text style={s.bestBadgeText}>🏆 BEST</Text></View>}
                     <View style={s.postHeader}>
@@ -665,7 +668,7 @@ export default function App() {
                     <Text style={s.postContent} numberOfLines={2}>{post.content}</Text>
                     <View style={s.postFooter}>
                       <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(post)}><Text style={s.likeBtnText}>👍 {post.likes}</Text></TouchableOpacity>
-                      <Text style={s.commentCount}>💬 {L.comments}</Text>
+                      <Text style={s.commentCount}>💬 {displayCount}</Text>
                       {/* 번역 버튼 */}
                       <TouchableOpacity style={s.translateBtn} onPress={()=>translateText(`post_${post.id}`,post.title+'\n'+post.content)}>
                         <Text style={s.translateBtnText}>{translating[`post_${post.id}`]?L.translating:`🌐 ${L.translate}`}</Text>
@@ -673,7 +676,7 @@ export default function App() {
                     </View>
                     {translations[`post_${post.id}`]&&<View style={s.translatedBox}><Text style={s.translatedText}>{translations[`post_${post.id}`]}</Text></View>}
                   </TouchableOpacity>
-                ))}
+                  );}))}
                 <View style={{height:20}}/>
               </ScrollView>
             )}
