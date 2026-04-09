@@ -827,11 +827,21 @@ export default function App() {
         </Modal>
 
         {/* 게시글 상세 모달 */}
-        <Modal visible={!!selectedPost} animationType="slide" onRequestClose={()=>{setSelectedPost(null);setReplyTo(null)}}>
+        <Modal visible={!!selectedPost} animationType="slide" onRequestClose={()=>{
+          setSelectedPost(null)
+          setReplyTo(null)
+          setShowEditModal(false)
+          setEditingPost(null)
+        }}>
           {selectedPost&&(
             <SafeAreaView style={{flex:1,backgroundColor:'#F8F5F0'}}>
               <View style={s.writeModalHeader}>
-                <TouchableOpacity onPress={()=>{setSelectedPost(null);setReplyTo(null)}}><Text style={{fontSize:20,color:'#666'}}>←</Text></TouchableOpacity>
+                <TouchableOpacity onPress={()=>{
+                  setSelectedPost(null)
+                  setReplyTo(null)
+                  setShowEditModal(false)
+                  setEditingPost(null)
+                }}><Text style={{fontSize:20,color:'#666'}}>←</Text></TouchableOpacity>
                 <Text style={s.writeModalTitle}>{L.community_title}</Text>
                 <View style={{width:24}}/>
               </View>
