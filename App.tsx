@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, StyleSheet, Modal,
-  Linking, TextInput, Alert, SafeAreaView, Image
+  Linking, TextInput, Alert, SafeAreaView, Image, Platform
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '@supabase/supabase-js'
@@ -298,33 +298,46 @@ export default function App() {
   }
 
   async function deletePost(postId: string) {
-    Alert.alert(
-      '정말 삭제하시겠습니까?',
-      '',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase
-              .from('posts')
-              .delete()
-              .eq('id', postId)
+    if (Platform.OS === 'web') {
+      if (!window.confirm('정말 삭제하시겠습니까?')) return
+      const { error } = await supabase.from('posts').delete().eq('id', postId)
+      if (error) {
+        window.alert('삭제 실패: ' + error.message)
+      } else {
+        window.alert('삭제되었습니다')
+        if (selectedPost?.id === postId) setSelectedPost(null)
+        await loadPosts()
+        await loadMyData()
+      }
+    } else {
+      Alert.alert(
+        '정말 삭제하시겠습니까?',
+        '',
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: async () => {
+              const { error } = await supabase
+                .from('posts')
+                .delete()
+                .eq('id', postId)
 
-            if (error) {
-              Alert.alert('삭제 실패', error.message)
-              console.error('삭제 에러:', error)
-            } else {
-              Alert.alert('삭제되었습니다', '')
-              if (selectedPost?.id === postId) setSelectedPost(null)
-              await loadPosts()
-              await loadMyData()
+              if (error) {
+                Alert.alert('삭제 실패', error.message)
+                console.error('삭제 에러:', error)
+              } else {
+                Alert.alert('삭제되었습니다', '')
+                if (selectedPost?.id === postId) setSelectedPost(null)
+                await loadPosts()
+                await loadMyData()
+              }
             }
           }
-        }
-      ]
-    )
+        ]
+      )
+    }
   }
 
   async function pickEditImage() {
