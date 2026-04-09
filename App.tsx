@@ -367,33 +367,23 @@ export default function App() {
   async function loadPlaces() {
     setLoading(true)
     let q = supabase.from('places').select('*')
-    
-    // 지역 필터링: address 컬럼에 포함된 텍스트로 검색
-    if(selectedRegion.id !== 'all') {
-      if(selectedDistrict === '전체') {
-        // 광역시도 선택 시 (강원, 경상 등)
-        q = q.ilike('address', `%${selectedRegion.id}%`)
+    if (selectedRegion.id !== 'all') {
+      if (selectedDistrict !== '전체') {
+        const key = selectedDistrict.split('/')[0].trim()
+        q = q.ilike('address', `%${key}%`)
       } else {
-        // 세부지역 선택 시 (속초, 강릉 등 또는 강남/역삼/삼성 등)
-        const districtKey = selectedDistrict.split('/')[0].trim()
-        q = q.ilike('address', `%${districtKey}%`)
+        q = q.ilike('address', `%${selectedRegion.id}%`)
       }
     }
-    
-    // 카테고리 필터
     const catBase = selectedCat.split('_')[0]
-    if(selectedCat !== 'all') {
-      q = q.eq('category', catBase)
-    }
-    
-    // 검색어 필터
-    if(searchText.trim()) {
-      q = q.ilike('name', `%${searchText}%`)
-    }
-    
-    const {data} = await q
-    setPlaces(data||[])
+    if (selectedCat !== 'all') q = q.eq('category', catBase)
+    if (searchText.trim()) q = q.ilike('name', `%${searchText}%`)
+    const { data } = await q
+    const seen = new Set()
+    const unique = (data || []).filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
+    setPlaces(unique)
     setLoading(false)
+  }
   }
 
   async function loadPosts() {
