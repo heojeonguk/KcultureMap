@@ -338,6 +338,28 @@ export default function App() {
   }
 
   async function pickEditImage() {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0]
+        if (!file) return
+        setEditPhotoUploading(true)
+        try {
+          const fileName = `post_${Date.now()}.jpg`
+          const { error } = await supabase.storage.from('community-photos').upload(fileName, file, { contentType: file.type, upsert: true })
+          if (error) throw error
+          const { data } = supabase.storage.from('community-photos').getPublicUrl(fileName)
+          setEditPhoto(data.publicUrl)
+        } catch(e) {
+          window.alert('사진 업로드에 실패했습니다')
+        }
+        setEditPhotoUploading(false)
+      }
+      input.click()
+      return
+    }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if(!perm.granted) { Alert.alert('','사진 접근 권한이 필요합니다'); return }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -409,6 +431,28 @@ export default function App() {
   }
 
   async function pickImage() {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0]
+        if (!file) return
+        setPostPhotoUploading(true)
+        try {
+          const fileName = `post_${Date.now()}.jpg`
+          const { error } = await supabase.storage.from('community-photos').upload(fileName, file, { contentType: file.type, upsert: true })
+          if (error) throw error
+          const { data } = supabase.storage.from('community-photos').getPublicUrl(fileName)
+          setPostPhoto(data.publicUrl)
+        } catch(e) {
+          window.alert('사진 업로드에 실패했습니다')
+        }
+        setPostPhotoUploading(false)
+      }
+      input.click()
+      return
+    }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if(!perm.granted) { Alert.alert('','사진 접근 권한이 필요합니다'); return }
     const result = await ImagePicker.launchImageLibraryAsync({
