@@ -870,8 +870,10 @@ export default function App() {
                       <>
                         <TouchableOpacity 
                           style={[s.translateBtn,{backgroundColor:'#f0f4ff'}]} 
-                          onPress={()=>openEditModal(selectedPost)}
-                          disabled={postSubmitting}
+                          onPress={() => {
+                            setSelectedPost(null)
+                            openEditModal(selectedPost)
+                          }}
                         >
                           <Text style={{color:'#1565C0',fontWeight:'600',fontSize:11}}>✏️ 수정</Text>
                         </TouchableOpacity>
