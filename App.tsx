@@ -384,7 +384,6 @@ export default function App() {
     setPlaces(unique)
     setLoading(false)
   }
-  }
 
   async function loadPosts() {
     setPostsLoading(true)
