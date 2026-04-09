@@ -445,8 +445,8 @@ export default function App() {
           if (error) throw error
           const { data } = supabase.storage.from('community-photos').getPublicUrl(fileName)
           setPostPhoto(data.publicUrl)
-        } catch(e) {
-          console.log('upload error:', JSON.stringify(e))
+        } catch(err: any) {
+          console.log('upload error detail:', err?.message, err?.statusCode, JSON.stringify(err))
           window.alert('사진 업로드에 실패했습니다')
         }
         setPostPhotoUploading(false)
