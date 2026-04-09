@@ -678,7 +678,7 @@ export default function App() {
                     </View>
                     {translations[`post_${post.id}`]&&<View style={s.translatedBox}><Text style={s.translatedText}>{translations[`post_${post.id}`]}</Text></View>}
                   </TouchableOpacity>
-                  );}))}
+                  );})}
                 <View style={{height:20}}/>
               </ScrollView>
             )}
