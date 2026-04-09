@@ -250,10 +250,7 @@ export default function App() {
     { label:L.grp_activity, items:[{key:'activity',label:L.cat_activity,color:'#6B21A8'},{key:'activity_c',label:L.cat_cooking,color:'#6B21A8'},{key:'activity_s',label:L.cat_spa,color:'#6B21A8'},{key:'activity_n',label:L.cat_night,color:'#374151'}]},
   ]
 
-  useEffect(() => {
-    const timer = setTimeout(() => { loadPlaces() }, 100)
-    return () => clearTimeout(timer)
-  }, [selectedRegion, selectedDistrict, selectedCat, searchText])
+  useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
   useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
 
@@ -367,21 +364,21 @@ export default function App() {
   async function loadPlaces() {
     setLoading(true)
     let q = supabase.from('places').select('*')
+
     if (selectedRegion.id !== 'all') {
       if (selectedDistrict !== '전체') {
-        const key = selectedDistrict.split('/')[0].trim()
-        q = q.ilike('address', `%${key}%`)
+        q = q.eq('district', selectedDistrict)
       } else {
-        q = q.ilike('address', `%${selectedRegion.id}%`)
+        q = q.eq('city', selectedRegion.id)
       }
     }
+
     const catBase = selectedCat.split('_')[0]
     if (selectedCat !== 'all') q = q.eq('category', catBase)
     if (searchText.trim()) q = q.ilike('name', `%${searchText}%`)
+
     const { data } = await q
-    const seen = new Set()
-    const unique = (data || []).filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true })
-    setPlaces(unique)
+    setPlaces(data || [])
     setLoading(false)
   }
 
