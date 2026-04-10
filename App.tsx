@@ -1234,26 +1234,18 @@ export default function App() {
             </View>
           )}
         </Modal>
+        <Modal visible={!!photoViewer} transparent={true} animationType="fade" onRequestClose={()=>setPhotoViewer(null)}>
+          <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.95)', justifyContent:'center', alignItems:'center'}}>
+            <TouchableOpacity style={{position:'absolute', top:20, right:20, zIndex:10, padding:10}} onPress={()=>setPhotoViewer(null)}>
+              <Text style={{color:'white', fontSize:32, fontWeight:'bold'}}>✕</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{width:'95%', height:'80%', justifyContent:'center', alignItems:'center'}} onPress={()=>setPhotoViewer(null)} activeOpacity={1}>
+              <Image source={{uri:photoViewer||''}} style={{width:'100%', height:'100%'}} resizeMode="contain"/>
+            </TouchableOpacity>
+          </View>
+        </Modal>
 
       </View>
-      {photoViewer&&(
-        <View style={{
-          position:'fixed' as any,
-          top:0, left:0, right:0, bottom:0,
-          backgroundColor:'rgba(0,0,0,0.95)',
-          zIndex:99999,
-          justifyContent:'center',
-          alignItems:'center',
-          display:'flex' as any
-        }}>
-          <TouchableOpacity style={{position:'absolute' as any, top:20, right:20, zIndex:10000, padding:10}} onPress={()=>setPhotoViewer(null)}>
-            <Text style={{color:'white', fontSize:32, fontWeight:'bold'}}>✕</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{width:'95%', height:'80%', justifyContent:'center', alignItems:'center'}} onPress={()=>setPhotoViewer(null)} activeOpacity={1}>
-            <Image source={{uri:photoViewer}} style={{width:'100%', height:'100%'}} resizeMode="contain"/>
-          </TouchableOpacity>
-        </View>
-      )}
     </SafeAreaView>
   )
 }
