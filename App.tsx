@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, StyleSheet, Modal,
@@ -173,6 +173,7 @@ const AVATAR_COLORS = ['#C8102E','#1565C0','#1A7A4A','#8B5E3C','#6B21A8','#F5A62
 const getAvatarColor = (name: string) => AVATAR_COLORS[(name||'?').charCodeAt(0) % AVATAR_COLORS.length]
 
 export default function App() {
+  const exploreScrollRef = useRef<ScrollView>(null)
   const [lang, setLang] = useState('ko')
   const [tab, setTab] = useState('explore')
   const [places, setPlaces] = useState<any[]>([])
@@ -552,7 +553,14 @@ export default function App() {
   }
 
   const openDetail = (p:any) => { setSelectedPlace(p); loadReviews(p.id); setReviewText(''); setReviewStar(0) }
-  const goHome = () => { setTab('explore'); setSelectedRegion(REGION_DATA[0]); setSelectedDistrict('전체'); setSelectedCat('all'); setSearchText('') }
+  const goHome = () => { 
+    setTab('explore'); 
+    setSelectedRegion(REGION_DATA[0]); 
+    setSelectedDistrict('전체'); 
+    setSelectedCat('all'); 
+    setSearchText('');
+    exploreScrollRef.current?.scrollTo({y:0, animated:true});
+  }
   const toggleSave = (id:string) => setSaved(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])
   const openGoogleMaps = (place:any) => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.name+' '+place.address)}&travelmode=${routeTransport==='walk'?'walking':routeTransport==='taxi'?'driving':'transit'}`)
   const routeData = ROUTES_DATA[routeTransport]
@@ -586,7 +594,7 @@ export default function App() {
               <Text style={s.regionBarText}>{regionLabel}</Text>
               <Text style={s.regionBarArrow}>▼</Text>
             </TouchableOpacity>
-            <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false}>
+            <ScrollView ref={exploreScrollRef} style={{flex:1}} showsVerticalScrollIndicator={false}>
               {CAT_GROUPS.map(group=>(
                 <View key={group.label} style={s.catSection}>
                   {group.label!==''&&<Text style={s.catGroupLabel}>{group.label}</Text>}
