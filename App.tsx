@@ -1245,7 +1245,10 @@ export default function App() {
           </TouchableOpacity>
         </View>
       )}
-
+      </View>
+    </SafeAreaView>
+  )
+}
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:'#0D1B2A'},
