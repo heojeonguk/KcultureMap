@@ -205,6 +205,7 @@ export default function App() {
   const [replyTo, setReplyTo] = useState<any>(null)
   const [myPosts, setMyPosts] = useState<any[]>([])
   const [myReviewCount, setMyReviewCount] = useState(0)
+  const [myReviews, setMyReviews] = useState<any[]>([])
   const [showRegionModal, setShowRegionModal] = useState(false)
   const [showLangModal, setShowLangModal] = useState(false)
   const [showRouteModal, setShowRouteModal] = useState(false)
@@ -417,7 +418,8 @@ export default function App() {
   async function loadMyData() {
     const {data:p}=await supabase.from('posts').select('*').eq('user_name','나').order('created_at',{ascending:false})
     setMyPosts(p||[])
-    const {data:r}=await supabase.from('reviews').select('id').eq('user_name','나')
+    const {data:r}=await supabase.from('reviews').select('*').eq('user_name','나').order('created_at',{ascending:false})
+    setMyReviews(r||[])
     setMyReviewCount((r||[]).length)
   }
 
@@ -782,6 +784,27 @@ export default function App() {
                       ) : (
                         <Text style={{color:'#C8102E',fontWeight:'700',fontSize:12}}>🗑 삭제</Text>
                       )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+              <Text style={s.sectionTitle}>⭐ 내 리뷰</Text>
+              {myReviews.length===0 ? <Text style={s.emptyText}>작성한 리뷰가 없습니다</Text> : myReviews.map((review:any)=>(
+                <View key={review.id} style={s.myPostCard}>
+                  <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:6}}>
+                    <Text style={{fontSize:20}}>📍</Text>
+                    <Text style={{fontWeight:'700',fontSize:14,color:'#1a1a1a',flex:1}}>{review.place_id ? `장소 ${review.place_id}` : '장소'}</Text>
+                    <Text style={{color:'#f5a623',fontSize:13}}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</Text>
+                  </View>
+                  <Text style={{fontSize:13,color:'#444',lineHeight:18}}>{review.content}</Text>
+                  <View style={{flexDirection:'row',justifyContent:'space-between',marginTop:6}}>
+                    <Text style={s.myPostMeta}>{timeAgo(review.created_at)}</Text>
+                    <TouchableOpacity onPress={()=>{
+                      if(window.confirm('리뷰를 삭제하시겠습니까?')) {
+                        supabase.from('reviews').delete().eq('id',review.id).then(()=>loadMyData())
+                      }
+                    }}>
+                      <Text style={{color:'#C8102E',fontSize:12}}>🗑 삭제</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
