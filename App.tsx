@@ -206,6 +206,9 @@ export default function App() {
   const [myPosts, setMyPosts] = useState<any[]>([])
   const [myReviewCount, setMyReviewCount] = useState(0)
   const [myReviews, setMyReviews] = useState<any[]>([])
+  const [editingReview, setEditingReview] = useState<any>(null)
+  const [editReviewContent, setEditReviewContent] = useState('')
+  const [editReviewRating, setEditReviewRating] = useState(5)
   const [showRegionModal, setShowRegionModal] = useState(false)
   const [showLangModal, setShowLangModal] = useState(false)
   const [showRouteModal, setShowRouteModal] = useState(false)
@@ -418,8 +421,18 @@ export default function App() {
   async function loadMyData() {
     const {data:p}=await supabase.from('posts').select('*').eq('user_name','나').order('created_at',{ascending:false})
     setMyPosts(p||[])
-    const {data:r}=await supabase.from('reviews').select('*').eq('user_name','나').order('created_at',{ascending:false})
-    setMyReviews(r||[])
+    let r:any[] = []
+    try {
+      const { data, error } = await supabase.from('reviews').select('*, places(id, name, emoji)').eq('user_name','나').order('created_at',{ascending:false})
+      if (error) throw error
+      r = data || []
+    } catch(e) {
+      console.warn('Review join failed, falling back to plain reviews', e)
+      const { data, error } = await supabase.from('reviews').select('*').eq('user_name','나').order('created_at',{ascending:false})
+      if (error) console.error(error)
+      r = data || []
+    }
+    setMyReviews(r)
     setMyReviewCount((r||[]).length)
   }
 
@@ -792,21 +805,68 @@ export default function App() {
               {myReviews.length===0 ? <Text style={s.emptyText}>작성한 리뷰가 없습니다</Text> : myReviews.map((review:any)=>(
                 <View key={review.id} style={s.myPostCard}>
                   <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:6}}>
-                    <Text style={{fontSize:20}}>📍</Text>
-                    <Text style={{fontWeight:'700',fontSize:14,color:'#1a1a1a',flex:1}}>{review.place_id ? `장소 ${review.place_id}` : '장소'}</Text>
+                    <Text style={{fontSize:20}}>{review.places?.emoji || '📍'}</Text>
+                    <Text style={{fontWeight:'700',fontSize:14,color:'#1a1a1a',flex:1}}>{review.places?.name || '장소'}</Text>
                     <Text style={{color:'#f5a623',fontSize:13}}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</Text>
                   </View>
-                  <Text style={{fontSize:13,color:'#444',lineHeight:18}}>{review.content}</Text>
-                  <View style={{flexDirection:'row',justifyContent:'space-between',marginTop:6}}>
-                    <Text style={s.myPostMeta}>{timeAgo(review.created_at)}</Text>
-                    <TouchableOpacity onPress={()=>{
-                      if(window.confirm('리뷰를 삭제하시겠습니까?')) {
-                        supabase.from('reviews').delete().eq('id',review.id).then(()=>loadMyData())
-                      }
-                    }}>
-                      <Text style={{color:'#C8102E',fontSize:12}}>🗑 삭제</Text>
-                    </TouchableOpacity>
-                  </View>
+                  {editingReview?.id===review.id ? (
+                    <View>
+                      <View style={{flexDirection:'row',gap:8,marginBottom:10}}>
+                        {[1,2,3,4,5].map(star=> (
+                          <TouchableOpacity key={star} onPress={()=>setEditReviewRating(star)}>
+                            <Text style={{fontSize:20,color: star<=editReviewRating ? '#f5a623' : '#ccc'}}>{'★'}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <TextInput
+                        style={[s.input,s.textarea,{backgroundColor:'#fff'}]}
+                        multiline
+                        value={editReviewContent}
+                        onChangeText={setEditReviewContent}
+                        placeholder='리뷰 내용을 입력하세요'
+                        placeholderTextColor='#bbb'
+                      />
+                      <View style={{flexDirection:'row',gap:8,marginTop:10}}>
+                        <TouchableOpacity style={[s.myPostActionBtn,{flex:1,backgroundColor:'#f0f4ff'}]} onPress={async ()=>{
+                          const { error } = await supabase.from('reviews').update({ rating:editReviewRating, content:editReviewContent }).eq('id',editingReview.id)
+                          if (!error) {
+                            await loadMyData()
+                            setEditingReview(null)
+                          } else {
+                            Alert.alert('오류','리뷰 수정에 실패했습니다')
+                          }
+                        }}>
+                          <Text style={{color:'#1565C0',fontWeight:'700',fontSize:12}}>💾 저장</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[s.myPostActionBtn,{flex:1,backgroundColor:'#fff5f5'}]} onPress={()=>setEditingReview(null)}>
+                          <Text style={{color:'#C8102E',fontWeight:'700',fontSize:12}}>✕ 취소</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={{fontSize:13,color:'#444',lineHeight:18}}>{review.content}</Text>
+                      <View style={{flexDirection:'row',justifyContent:'space-between',marginTop:6}}>
+                        <Text style={s.myPostMeta}>{timeAgo(review.created_at)}</Text>
+                        <View style={{flexDirection:'row',gap:12}}>
+                          <TouchableOpacity onPress={()=>{
+                            setEditingReview(review)
+                            setEditReviewContent(review.content)
+                            setEditReviewRating(review.rating)
+                          }}>
+                            <Text style={{color:'#1565C0',fontSize:12}}>✏️ 수정</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={()=>{
+                            if(window.confirm('리뷰를 삭제하시겠습니까?')) {
+                              supabase.from('reviews').delete().eq('id',review.id).then(()=>loadMyData())
+                            }
+                          }}>
+                            <Text style={{color:'#C8102E',fontSize:12}}>🗑 삭제</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </>
+                  )}
                 </View>
               ))}
             </View>
