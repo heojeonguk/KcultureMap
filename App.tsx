@@ -735,9 +735,11 @@ export default function App() {
                     </View>
                     <Text style={s.postTitle}>{post.title}</Text>
                     {/* 미리보기 이미지 */}
-                    {post.photo_url&&<TouchableOpacity onPress={()=>setPhotoViewer(post.photo_url)} activeOpacity={0.8}>
-                      <Image source={{uri:post.photo_url}} style={s.postPreviewImg} resizeMode="cover"/>
-                    </TouchableOpacity>}
+                    {post.photo_url&&<img
+                      src={post.photo_url}
+                      style={{width:'100%', height:200, objectFit:'cover', borderRadius:8, cursor:'pointer', marginTop:8, marginBottom:4, display:'block'}}
+                      onClick={()=>setPhotoViewer(post.photo_url)}
+                    />}
                     <Text style={s.postContent} numberOfLines={2}>{post.content}</Text>
                     <View style={s.postFooter}>
                       <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(post)}><Text style={s.likeBtnText}>👍 {post.likes}</Text></TouchableOpacity>
@@ -1003,9 +1005,11 @@ export default function App() {
                   </View>
                   <Text style={s.postDetailTitle}>{selectedPost.title}</Text>
                   {/* 상세 이미지 */}
-                  {selectedPost.photo_url&&<TouchableOpacity onPress={()=>setPhotoViewer(selectedPost.photo_url)} activeOpacity={0.8}>
-                    <Image source={{uri:selectedPost.photo_url}} style={s.postDetailImg} resizeMode="cover"/>
-                  </TouchableOpacity>}
+                  {selectedPost.photo_url&&<img
+                    src={selectedPost.photo_url}
+                    style={{width:'100%', height:240, objectFit:'cover', borderRadius:8, cursor:'pointer', marginBottom:8, display:'block'}}
+                    onClick={()=>setPhotoViewer(selectedPost.photo_url)}
+                  />}
                   <Text style={s.postDetailContent}>{selectedPost.content}</Text>
                   <View style={{flexDirection:'row',gap:10,marginTop:12,flexWrap:'wrap'}}>
                     <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(selectedPost)}><Text style={s.likeBtnText}>👍 {L.likes} {selectedPost.likes}</Text></TouchableOpacity>
