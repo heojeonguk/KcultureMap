@@ -1232,20 +1232,14 @@ export default function App() {
         </Modal>
 
       {photoViewer&&(
-        <TouchableOpacity 
-          style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.92)',zIndex:9999,justifyContent:'center',alignItems:'center'}}
-          onPress={()=>setPhotoViewer(null)}
-          activeOpacity={1}
-        >
-          <TouchableOpacity style={{position:'absolute',top:20,right:20,zIndex:10}} onPress={()=>setPhotoViewer(null)}>
-            <Text style={{color:'white',fontSize:28}}>✕</Text>
+        <View style={{position:'fixed' as any, top:0, left:0, right:0, bottom:0, backgroundColor:'rgba(0,0,0,0.92)', zIndex:9999, justifyContent:'center', alignItems:'center', display:'flex' as any}}>
+          <TouchableOpacity style={{position:'absolute' as any, top:20, right:20, zIndex:10000, padding:10}} onPress={()=>setPhotoViewer(null)}>
+            <Text style={{color:'white', fontSize:32, fontWeight:'bold'}}>✕</Text>
           </TouchableOpacity>
-          <Image 
-            source={{uri:photoViewer}} 
-            style={{width:'95%',height:'80%'}} 
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
+          <TouchableOpacity style={{width:'95%', height:'80%', justifyContent:'center', alignItems:'center'}} onPress={()=>setPhotoViewer(null)} activeOpacity={1}>
+            <Image source={{uri:photoViewer}} style={{width:'100%', height:'100%'}} resizeMode="contain"/>
+          </TouchableOpacity>
+        </View>
       )}
 
 
