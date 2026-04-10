@@ -199,6 +199,8 @@ export default function App() {
   const [postSubmitting, setPostSubmitting] = useState(false)
   const [postPhoto, setPostPhoto] = useState<string | null>(null)
   const [postPhotoUploading, setPostPhotoUploading] = useState(false)
+  const [reviewPhoto, setReviewPhoto] = useState<string | null>(null)
+  const [reviewPhotoUploading, setReviewPhotoUploading] = useState(false)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [postComments, setPostComments] = useState<any[]>([])
   const [commentText, setCommentText] = useState('')
@@ -493,6 +495,49 @@ export default function App() {
     setPostPhotoUploading(false)
   }
 
+  async function pickReviewImage() {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0]
+        if (!file) return
+        setReviewPhotoUploading(true)
+        try {
+          const fileName = `review_${Date.now()}.jpg`
+          const { error } = await supabase.storage.from('community-photos').upload(fileName, file, { contentType: file.type, upsert: true })
+          if (error) throw error
+          const { data } = supabase.storage.from('community-photos').getPublicUrl(fileName)
+          setReviewPhoto(data.publicUrl)
+        } catch(e) {
+          window.alert('사진 업로드에 실패했습니다')
+        }
+        setReviewPhotoUploading(false)
+      }
+      input.click()
+      return
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if(!perm.granted) { Alert.alert('','사진 접근 권한이 필요합니다'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect:[4,3], quality:0.7 })
+    if(result.canceled) return
+    const uri = result.assets[0].uri
+    setReviewPhotoUploading(true)
+    try {
+      const fileName = `review_${Date.now()}.jpg`
+      const response = await fetch(uri)
+      const blob = await response.blob()
+      const {error} = await supabase.storage.from('community-photos').upload(fileName, blob, { contentType:'image/jpeg', upsert:true })
+      if(error) throw error
+      const {data} = supabase.storage.from('community-photos').getPublicUrl(fileName)
+      setReviewPhoto(data.publicUrl)
+    } catch(e) {
+      Alert.alert('오류','사진 업로드에 실패했습니다')
+    }
+    setReviewPhotoUploading(false)
+  }
+
   async function submitPost() {
     if(!postTitle.trim()) { Alert.alert('','제목을 입력해주세요'); return }
     if(!postContent.trim()) { Alert.alert('','내용을 입력해주세요'); return }
@@ -515,8 +560,8 @@ export default function App() {
     if(reviewStar===0) { Alert.alert('','별점을 선택해주세요'); return }
     if(!reviewText.trim()) { Alert.alert('','내용을 입력해주세요'); return }
     setSubmitting(true)
-    const {error} = await supabase.from('reviews').insert({ place_id:selectedPlace.id, user_name:'나', rating:reviewStar, content:reviewText.trim() })
-    if(!error) { setReviewText(''); setReviewStar(0); setMyReviewCount(c=>c+1); await loadReviews(selectedPlace.id); Alert.alert('✅','등록 완료!') }
+    const {error} = await supabase.from('reviews').insert({ place_id:selectedPlace.id, user_name:'나', rating:reviewStar, content:reviewText.trim(), photo_url: reviewPhoto })
+    if(!error) { setReviewText(''); setReviewStar(0); setReviewPhoto(null); setMyReviewCount(c=>c+1); await loadReviews(selectedPlace.id); Alert.alert('✅','등록 완료!') }
     setSubmitting(false)
   }
 
@@ -1215,6 +1260,10 @@ export default function App() {
                 ))}
                 <Text style={s.sectionTitle}>✏️ {L.writeReview}</Text>
                 <View style={s.reviewForm}>
+                  <TouchableOpacity onPress={pickReviewImage} style={{flexDirection:'row',alignItems:'center',gap:8,padding:10,borderWidth:1,borderColor:'#ddd',borderRadius:8,marginBottom:8,backgroundColor:'#f9f9f9'}}>
+                    <Text style={{fontSize:13,color:'#666'}}>{reviewPhotoUploading?'업로드 중...':'📷 사진 첨부 (선택)'}</Text>
+                  </TouchableOpacity>
+                  {reviewPhoto&&<Image source={{uri:reviewPhoto}} style={{width:'100%',height:160,borderRadius:8,marginBottom:8}} resizeMode="cover"/>}
                   <Text style={s.starLabel}>별점</Text>
                   <View style={s.starRow}>{[1,2,3,4,5].map(st=><TouchableOpacity key={st} onPress={()=>setReviewStar(st)}><Text style={[s.star,st<=reviewStar&&s.starOn]}>★</Text></TouchableOpacity>)}</View>
                   <TextInput style={[s.input,s.textarea]} placeholder="솔직한 후기를 남겨주세요..." value={reviewText} onChangeText={setReviewText} multiline placeholderTextColor="#bbb"/>
