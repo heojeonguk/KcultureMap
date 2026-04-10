@@ -494,8 +494,8 @@ export default function App() {
   }
 
   async function submitPost() {
-    if(!postTitle.trim()) { Alert.alert('','제목을 입력해주세요'); return }
-    if(!postContent.trim()) { Alert.alert('','내용을 입력해주세요'); return }
+    if(!postTitle.trim()) { window.alert('제목을 입력해주세요'); return }
+    if(!postContent.trim()) { window.alert('내용을 입력해주세요'); return }
     setPostSubmitting(true)
     const {error} = await supabase.from('posts').insert({
       user_name:'나', nation:'✍️', title:postTitle.trim(),
@@ -506,17 +506,17 @@ export default function App() {
     if(!error) {
       setPostTitle(''); setPostContent(''); setPostCity(''); setPostCategory('free'); setPostPhoto(null)
       setShowWriteModal(false); await loadPosts()
-      Alert.alert('✅','게시글이 등록되었습니다!')
+      window.alert('게시글이 등록되었습니다!')
     }
     setPostSubmitting(false)
   }
 
   async function submitReview() {
-    if(reviewStar===0) { Alert.alert('','별점을 선택해주세요'); return }
-    if(!reviewText.trim()) { Alert.alert('','내용을 입력해주세요'); return }
+    if(reviewStar===0) { window.alert('별점을 선택해주세요'); return }
+    if(!reviewText.trim()) { window.alert('내용을 입력해주세요'); return }
     setSubmitting(true)
     const {error} = await supabase.from('reviews').insert({ place_id:selectedPlace.id, user_name:'나', rating:reviewStar, content:reviewText.trim() })
-    if(!error) { setReviewText(''); setReviewStar(0); setMyReviewCount(c=>c+1); await loadReviews(selectedPlace.id); Alert.alert('✅','등록 완료!') }
+    if(!error) { setReviewText(''); setReviewStar(0); setMyReviewCount(c=>c+1); await loadReviews(selectedPlace.id); window.alert('등록 완료!') }
     setSubmitting(false)
   }
 
