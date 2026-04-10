@@ -199,6 +199,7 @@ export default function App() {
   const [postSubmitting, setPostSubmitting] = useState(false)
   const [postPhoto, setPostPhoto] = useState<string | null>(null)
   const [postPhotoUploading, setPostPhotoUploading] = useState(false)
+  const [photoViewer, setPhotoViewer] = useState<string | null>(null)
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [postComments, setPostComments] = useState<any[]>([])
   const [commentText, setCommentText] = useState('')
@@ -734,7 +735,9 @@ export default function App() {
                     </View>
                     <Text style={s.postTitle}>{post.title}</Text>
                     {/* 미리보기 이미지 */}
-                    {post.photo_url&&<Image source={{uri:post.photo_url}} style={s.postPreviewImg} resizeMode="cover"/>}
+                    {post.photo_url&&<TouchableOpacity onPress={()=>setPhotoViewer(post.photo_url)} activeOpacity={0.8}>
+                      <Image source={{uri:post.photo_url}} style={s.postPreviewImg} resizeMode="cover"/>
+                    </TouchableOpacity>}
                     <Text style={s.postContent} numberOfLines={2}>{post.content}</Text>
                     <View style={s.postFooter}>
                       <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(post)}><Text style={s.likeBtnText}>👍 {post.likes}</Text></TouchableOpacity>
@@ -1000,7 +1003,9 @@ export default function App() {
                   </View>
                   <Text style={s.postDetailTitle}>{selectedPost.title}</Text>
                   {/* 상세 이미지 */}
-                  {selectedPost.photo_url&&<Image source={{uri:selectedPost.photo_url}} style={s.postDetailImg} resizeMode="cover"/>}
+                  {selectedPost.photo_url&&<TouchableOpacity onPress={()=>setPhotoViewer(selectedPost.photo_url)} activeOpacity={0.8}>
+                    <Image source={{uri:selectedPost.photo_url}} style={s.postDetailImg} resizeMode="cover"/>
+                  </TouchableOpacity>}
                   <Text style={s.postDetailContent}>{selectedPost.content}</Text>
                   <View style={{flexDirection:'row',gap:10,marginTop:12,flexWrap:'wrap'}}>
                     <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(selectedPost)}><Text style={s.likeBtnText}>👍 {L.likes} {selectedPost.likes}</Text></TouchableOpacity>
@@ -1226,10 +1231,23 @@ export default function App() {
           )}
         </Modal>
 
-      </View>
-    </SafeAreaView>
-  )
-}
+      {photoViewer&&(
+        <TouchableOpacity 
+          style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.92)',zIndex:9999,justifyContent:'center',alignItems:'center'}}
+          onPress={()=>setPhotoViewer(null)}
+          activeOpacity={1}
+        >
+          <TouchableOpacity style={{position:'absolute',top:20,right:20,zIndex:10}} onPress={()=>setPhotoViewer(null)}>
+            <Text style={{color:'white',fontSize:28}}>✕</Text>
+          </TouchableOpacity>
+          <Image 
+            source={{uri:photoViewer}} 
+            style={{width:'95%',height:'80%'}} 
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      )}
+
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:'#0D1B2A'},
