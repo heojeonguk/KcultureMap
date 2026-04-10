@@ -737,7 +737,7 @@ export default function App() {
                     {/* 미리보기 이미지 */}
                     {post.photo_url&&<img
                       src={post.photo_url}
-                      style={{width:'100%', height:200, objectFit:'cover', borderRadius:8, cursor:'pointer', marginTop:8, marginBottom:4, display:'block'}}
+                      style={{width:'100%', height:200, objectFit:'cover' as any, borderRadius:8, cursor:'pointer', marginTop:8, marginBottom:4, display:'block'}}
                       onClick={()=>setPhotoViewer(post.photo_url)}
                     />}
                     <Text style={s.postContent} numberOfLines={2}>{post.content}</Text>
@@ -1007,7 +1007,7 @@ export default function App() {
                   {/* 상세 이미지 */}
                   {selectedPost.photo_url&&<img
                     src={selectedPost.photo_url}
-                    style={{width:'100%', height:240, objectFit:'cover', borderRadius:8, cursor:'pointer', marginBottom:8, display:'block'}}
+                    style={{width:'100%', height:240, objectFit:'cover' as any, borderRadius:8, cursor:'pointer', marginBottom:8, display:'block'}}
                     onClick={()=>setPhotoViewer(selectedPost.photo_url)}
                   />}
                   <Text style={s.postDetailContent}>{selectedPost.content}</Text>
