@@ -686,7 +686,7 @@ export default function App() {
 
         {/* 상단 바 */}
         <View style={s.topbar}>
-          <TouchableOpacity onPress={goHome}><Text style={s.logo}>K<Text style={s.logoEm}>컬쳐</Text>MAP</Text></TouchableOpacity>
+          <TouchableOpacity onPress={goHome}><Text style={s.logo}>K<Text style={s.logoEm}>컬처</Text>MAP</Text></TouchableOpacity>
           <View style={s.searchBar}>
             <Text style={s.searchIcon}>🔍</Text>
             <TextInput style={s.searchInput} placeholder={L.search} placeholderTextColor="rgba(255,255,255,0.4)" value={searchText} onChangeText={setSearchText} />
