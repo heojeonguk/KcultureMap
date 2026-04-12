@@ -194,7 +194,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
-  const [authMode, setAuthMode] = useState<'login'|'signup'>('login')
+  const [authMode, setAuthMode] = useState<'login'|'signup'|'verify'>('login')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [authNickname, setAuthNickname] = useState('')
@@ -531,7 +531,7 @@ export default function App() {
       options:{data:{nickname:authNickname}}
     })
     if(error) setAuthError(error.message)
-    else { setAuthError(''); window.alert('가입 완료! 이메일을 확인해주세요.'); setAuthMode('login') }
+    else { setAuthError(''); setAuthMode('verify') }
     setAuthSubmitting(false)
   }
 
@@ -1344,9 +1344,27 @@ export default function App() {
                 <Text style={{fontSize:16,color:'#C8102E'}}>✕ 닫기</Text>
               </TouchableOpacity>
               <Text style={{flex:1,textAlign:'center',fontWeight:'700',fontSize:16}}>
-                {authMode==='login'?'로그인':'회원가입'}
+                {authMode==='login'?'로그인':authMode==='signup'?'회원가입':'이메일 인증'}
               </Text>
             </View>
+            {authMode==='verify' ? (
+              <View style={{flex:1, justifyContent:'center', alignItems:'center', padding:32}}>
+                <Text style={{fontSize:48, marginBottom:16}}>📧</Text>
+                <Text style={{fontSize:20, fontWeight:'700', marginBottom:12, textAlign:'center'}}>이메일을 확인해주세요!</Text>
+                <Text style={{color:'#666', textAlign:'center', lineHeight:24, marginBottom:8}}>
+                  {authEmail} 으로 인증 메일을 보냈습니다.
+                </Text>
+                <Text style={{color:'#666', textAlign:'center', lineHeight:24, marginBottom:32}}>
+                  메일함에서 [K컬처MAP] 인증 메일을 열고{'\n'}
+                  "이메일 인증하기" 버튼을 클릭하면{'\n'}
+                  로그인이 가능합니다.
+                </Text>
+                <TouchableOpacity style={{backgroundColor:'#C8102E', padding:16, borderRadius:10, width:'100%', alignItems:'center', marginBottom:12}} onPress={()=>setAuthMode('login')}>
+                  <Text style={{color:'#fff', fontWeight:'700'}}>로그인 화면으로</Text>
+                </TouchableOpacity>
+                <Text style={{color:'#aaa', fontSize:12, textAlign:'center'}}>스팸함도 확인해보세요</Text>
+              </View>
+            ) : (
             <ScrollView style={{flex:1,padding:24}}>
               <Text style={{fontSize:28,fontWeight:'900',color:'#0D1B2A',textAlign:'center',marginBottom:8}}>K<Text style={{color:'#F5A623'}}>컬처</Text>MAP</Text>
               <Text style={{textAlign:'center',color:'#888',marginBottom:32,fontSize:14}}>한국 여행의 모든 것</Text>
@@ -1392,6 +1410,7 @@ export default function App() {
                 </Text>
               </TouchableOpacity>
             </ScrollView>
+            )}
           </SafeAreaView>
         </Modal>
         <Modal visible={!!photoViewer} transparent={true} animationType="fade" onRequestClose={()=>setPhotoViewer(null)}>
