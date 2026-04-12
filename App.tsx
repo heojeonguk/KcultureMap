@@ -191,6 +191,11 @@ export default function App() {
   const [posts, setPosts] = useState<any[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
   const [postFilter, setPostFilter] = useState('latest')
+  const [bestTab, setBestTab] = useState<'daily'|'weekly'>('daily')
+  const [dailyBest, setDailyBest] = useState<any[]>([])
+  const [weeklyBest, setWeeklyBest] = useState<any[]>([])
+  const [bestLoading, setBestLoading] = useState(false)
+  const [communityBestTab, setCommunityBestTab] = useState<'daily'|'weekly'>('daily')
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -286,6 +291,7 @@ export default function App() {
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
   useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
+  useEffect(() => { loadBestPosts() }, [])
 
   const openEditModal = (post:any) => {
     setEditingPost(post)
@@ -434,6 +440,26 @@ export default function App() {
     const { data } = await q
     setPlaces(data || [])
     setLoading(false)
+  }
+
+  async function loadBestPosts() {
+    setBestLoading(true)
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    const weekAgo = new Date()
+    weekAgo.setDate(weekAgo.getDate()-7)
+    weekAgo.setHours(0,0,0,0)
+    const {data:daily} = await supabase.from('posts').select('*, post_comments(count)')
+      .gte('created_at', today.toISOString())
+      .order('likes', {ascending:false})
+      .limit(10)
+    setDailyBest(daily||[])
+    const {data:weekly} = await supabase.from('posts').select('*, post_comments(count)')
+      .gte('created_at', weekAgo.toISOString())
+      .order('likes', {ascending:false})
+      .limit(10)
+    setWeeklyBest(weekly||[])
+    setBestLoading(false)
   }
 
   async function loadPosts() {
@@ -709,6 +735,34 @@ export default function App() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+              <View style={{backgroundColor:'#fff', marginBottom:8, paddingVertical:12}}>
+                <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, marginBottom:10}}>
+                  <Text style={{fontSize:15, fontWeight:'700', color:'#1a1a1a'}}>🏆 커뮤니티 베스트</Text>
+                  <View style={{flexDirection:'row', gap:8}}>
+                    <TouchableOpacity onPress={()=>setBestTab('daily')} style={{paddingHorizontal:12, paddingVertical:4, borderRadius:12, backgroundColor:bestTab==='daily'?'#C8102E':'#f0f0f0'}}>
+                      <Text style={{fontSize:12, color:bestTab==='daily'?'#fff':'#666', fontWeight:'600'}}>일일</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={()=>setBestTab('weekly')} style={{paddingHorizontal:12, paddingVertical:4, borderRadius:12, backgroundColor:bestTab==='weekly'?'#C8102E':'#f0f0f0'}}>
+                      <Text style={{fontSize:12, color:bestTab==='weekly'?'#fff':'#666', fontWeight:'600'}}>주간</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                {bestLoading?<ActivityIndicator size="small" color="#C8102E" style={{padding:16}}/>:(
+                  (bestTab==='daily'?dailyBest:weeklyBest).length===0
+                  ? <Text style={{textAlign:'center', color:'#aaa', fontSize:13, padding:16}}>아직 게시글이 없습니다</Text>
+                  : (bestTab==='daily'?dailyBest:weeklyBest).map((post:any, idx:number)=>(
+                    <TouchableOpacity key={post.id} style={{flexDirection:'row', alignItems:'center', paddingHorizontal:16, paddingVertical:8, borderBottomWidth:idx<(bestTab==='daily'?dailyBest:weeklyBest).length-1?1:0, borderBottomColor:'#f5f5f5'}}
+                      onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
+                      <Text style={{fontSize:16, fontWeight:'800', color:idx===0?'#F5A623':idx===1?'#888':idx===2?'#cd7f32':'#ccc', width:28}}>{idx+1}</Text>
+                      <View style={{flex:1}}>
+                        <Text style={{fontSize:13, fontWeight:'600', color:'#1a1a1a'}} numberOfLines={1}>{post.title}</Text>
+                        <Text style={{fontSize:11, color:'#aaa', marginTop:2}}>{post.user_name} · 👍 {post.likes} · 💬 {post.post_comments?.[0]?.count??0}</Text>
+                      </View>
+                      {post.photo_url&&<img src={post.photo_url} style={{width:44, height:44, borderRadius:6, objectFit:'cover' as any, marginLeft:8}}/>}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </View>
               <View style={s.mapPlaceholder}>
                 <Text style={{fontSize:26,marginBottom:6}}>🗺</Text>
                 <Text style={{color:'#888',fontSize:12,marginBottom:8}}>{regionLabel}</Text>
@@ -785,6 +839,34 @@ export default function App() {
             <View style={s.communityHeader}>
               <View><Text style={s.communityTitle}>{L.community_title}</Text><Text style={s.communitySub}>{L.community_sub}</Text></View>
               <TouchableOpacity style={s.writeBtn} onPress={()=>setShowWriteModal(true)}><Text style={s.writeBtnText}>✏️ {L.write_post}</Text></TouchableOpacity>
+            </View>
+            <View style={{backgroundColor:'#fff', marginBottom:8, paddingVertical:12}}>
+              <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, marginBottom:10}}>
+                <Text style={{fontSize:15, fontWeight:'700', color:'#1a1a1a'}}>🏆 커뮤니티 베스트</Text>
+                <View style={{flexDirection:'row', gap:8}}>
+                  <TouchableOpacity onPress={()=>setCommunityBestTab('daily')} style={{paddingHorizontal:12, paddingVertical:4, borderRadius:12, backgroundColor:communityBestTab==='daily'?'#C8102E':'#f0f0f0'}}>
+                    <Text style={{fontSize:12, color:communityBestTab==='daily'?'#fff':'#666', fontWeight:'600'}}>일일</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={()=>setCommunityBestTab('weekly')} style={{paddingHorizontal:12, paddingVertical:4, borderRadius:12, backgroundColor:communityBestTab==='weekly'?'#C8102E':'#f0f0f0'}}>
+                    <Text style={{fontSize:12, color:communityBestTab==='weekly'?'#fff':'#666', fontWeight:'600'}}>주간</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {bestLoading?<ActivityIndicator size="small" color="#C8102E" style={{padding:16}}/>:(
+                (communityBestTab==='daily'?dailyBest:weeklyBest).length===0
+                ? <Text style={{textAlign:'center', color:'#aaa', fontSize:13, padding:16}}>아직 게시글이 없습니다</Text>
+                : (communityBestTab==='daily'?dailyBest:weeklyBest).map((post:any, idx:number)=>(
+                  <TouchableOpacity key={post.id} style={{flexDirection:'row', alignItems:'center', paddingHorizontal:16, paddingVertical:8, borderBottomWidth:idx<(communityBestTab==='daily'?dailyBest:weeklyBest).length-1?1:0, borderBottomColor:'#f5f5f5'}}
+                    onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
+                    <Text style={{fontSize:16, fontWeight:'800', color:idx===0?'#F5A623':idx===1?'#888':idx===2?'#cd7f32':'#ccc', width:28}}>{idx+1}</Text>
+                    <View style={{flex:1}}>
+                      <Text style={{fontSize:13, fontWeight:'600', color:'#1a1a1a'}} numberOfLines={1}>{post.title}</Text>
+                      <Text style={{fontSize:11, color:'#aaa', marginTop:2}}>{post.user_name} · 👍 {post.likes} · 💬 {post.post_comments?.[0]?.count??0}</Text>
+                    </View>
+                    {post.photo_url&&<img src={post.photo_url} style={{width:44, height:44, borderRadius:6, objectFit:'cover' as any, marginLeft:8}}/>}
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.postFilterRow}>
               {[{key:'latest',label:L.latest},{key:'best',label:`🏆 ${L.best}`},{key:'food',label:L.food_post},{key:'spot',label:L.spot_post},{key:'cafe',label:L.cafe_post},{key:'free',label:L.free_post}].map(f=>(
