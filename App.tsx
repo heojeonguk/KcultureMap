@@ -241,7 +241,6 @@ export default function App() {
   const [editCategory, setEditCategory] = useState('free')
   const [editPhoto, setEditPhoto] = useState<string | null>(null)
   const [editPhotoUploading, setEditPhotoUploading] = useState(false)
-  const mauCount = 247; const mauGoal = 5000
   const L = LANGS[lang] || LANGS['ko']
   
   const editDeleteTexts: any = {
@@ -263,13 +262,13 @@ export default function App() {
   }
   const editBtn = editDeleteTexts[lang] || editDeleteTexts['ko']
 
-  const CAT_GROUPS = [
-    { label:'', items:[{ key:'all', label:L.cat_all, color:'#0D1B2A' }] },
-    { label:L.grp_food, items:[{key:'food',label:L.cat_food,color:'#C8102E'},{key:'food_k',label:L.cat_korean,color:'#C8102E'},{key:'food_b',label:L.cat_bbq,color:'#C8102E'},{key:'food_s',label:L.cat_seafood,color:'#C8102E'},{key:'food_st',label:L.cat_street,color:'#C8102E'},{key:'food_d',label:L.cat_dessert,color:'#C8102E'}]},
-    { label:L.grp_spot, items:[{key:'spot',label:L.cat_spot,color:'#1565C0'},{key:'spot_p',label:L.cat_palace,color:'#1565C0'},{key:'spot_t',label:L.cat_temple,color:'#1565C0'},{key:'spot_n',label:L.cat_nature,color:'#1565C0'},{key:'spot_b',label:L.cat_beach,color:'#1565C0'},{key:'spot_k',label:L.cat_kpop,color:'#1565C0'}]},
-    { label:L.grp_cafe, items:[{key:'cafe',label:L.cat_cafe,color:'#8B5E3C'},{key:'cafe_h',label:L.cat_hanok,color:'#8B5E3C'},{key:'cafe_r',label:L.cat_rooftop,color:'#8B5E3C'},{key:'cafe_t',label:L.cat_tea,color:'#8B5E3C'}]},
-    { label:L.grp_shopping, items:[{key:'shopping',label:L.cat_shopping,color:'#1A7A4A'},{key:'shopping_m',label:L.cat_mall,color:'#1A7A4A'},{key:'shopping_b',label:L.cat_beauty,color:'#1A7A4A'},{key:'shopping_k',label:L.cat_kpop_goods,color:'#1A7A4A'}]},
-    { label:L.grp_activity, items:[{key:'activity',label:L.cat_activity,color:'#6B21A8'},{key:'activity_c',label:L.cat_cooking,color:'#6B21A8'},{key:'activity_s',label:L.cat_spa,color:'#6B21A8'},{key:'activity_n',label:L.cat_night,color:'#374151'}]},
+  const CATS = [
+    {key:'all',    label:'✨ 전체',    color:'#0D1B2A'},
+    {key:'food',   label:'🍽 맛집',    color:'#C8102E'},
+    {key:'cafe',   label:'☕ 카페',    color:'#8B5E3C'},
+    {key:'spot',   label:'📍 명소',    color:'#1565C0'},
+    {key:'shopping',label:'🛍 쇼핑',  color:'#1A7A4A'},
+    {key:'activity',label:'🎯 액티비티',color:'#6B21A8'},
   ]
 
   useEffect(() => {
@@ -429,8 +428,7 @@ export default function App() {
       }
     }
 
-    const catBase = selectedCat.split('_')[0]
-    if (selectedCat !== 'all') q = q.eq('category', catBase)
+    if (selectedCat !== 'all') q = q.eq('category', selectedCat)
     if (searchText.trim()) q = q.ilike('name', `%${searchText}%`)
 
     const { data } = await q
@@ -704,31 +702,19 @@ export default function App() {
               <Text style={s.regionBarArrow}>▼</Text>
             </TouchableOpacity>
             <ScrollView ref={exploreScrollRef} style={{flex:1}} showsVerticalScrollIndicator={false}>
-              {CAT_GROUPS.map(group=>(
-                <View key={group.label} style={s.catSection}>
-                  {group.label!==''&&<Text style={s.catGroupLabel}>{group.label}</Text>}
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catScroll}>
-                    {group.items.map(cat=>(
-                      <TouchableOpacity key={cat.key} onPress={()=>setSelectedCat(cat.key)} style={[s.catPill,selectedCat===cat.key&&{backgroundColor:cat.color,borderColor:cat.color}]}>
-                        <Text style={[s.catPillText,selectedCat===cat.key&&s.catPillTextActive]}>{cat.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              ))}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catScroll}>
+                {CATS.map(cat=>(
+                  <TouchableOpacity key={cat.key} onPress={()=>setSelectedCat(cat.key)} style={[s.catPill,selectedCat===cat.key&&{backgroundColor:cat.color,borderColor:cat.color}]}>
+                    <Text style={[s.catPillText,selectedCat===cat.key&&s.catPillTextActive]}>{cat.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
               <View style={s.mapPlaceholder}>
                 <Text style={{fontSize:26,marginBottom:6}}>🗺</Text>
                 <Text style={{color:'#888',fontSize:12,marginBottom:8}}>{regionLabel}</Text>
                 <TouchableOpacity style={s.mapOpenBtn} onPress={()=>Linking.openURL(`https://www.google.com/maps/search/${encodeURIComponent(selectedRegion.id==='all'?'한국 관광지':selectedRegion.label)}`)}>
                   <Text style={s.mapOpenBtnText}>🗺 {L.open_map}</Text>
                 </TouchableOpacity>
-              </View>
-              <View style={s.mauBanner}>
-                <Text style={s.mauTag}>🌱 서비스 오픈 기념</Text>
-                <Text style={s.mauTitle}>완전 무료 · 광고 없는 K컬처MAP</Text>
-                <Text style={s.mauDesc}>지금은 여러분의 리뷰와 추천이 가장 소중합니다</Text>
-                <View style={s.mauProgressLabel}><Text style={s.mauProgressText}>{L.mau}</Text><Text style={s.mauProgressText}>{mauCount.toLocaleString()} / {mauGoal.toLocaleString()}명</Text></View>
-                <View style={s.mauBar}><View style={[s.mauFill,{width:`${(mauCount/mauGoal)*100}%` as any}]}/></View>
               </View>
               {loading ? <View style={s.center}><ActivityIndicator size="large" color="#C8102E"/></View> : (
                 <View>
@@ -1564,14 +1550,6 @@ const s = StyleSheet.create({
   mapPlaceholder:{margin:14,borderRadius:14,backgroundColor:'#fff',height:88,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#eee'},
   mapOpenBtn:{backgroundColor:'#0D1B2A',borderRadius:10,paddingHorizontal:16,paddingVertical:7},
   mapOpenBtnText:{color:'#fff',fontSize:12,fontWeight:'600'},
-  mauBanner:{backgroundColor:'#0D1B2A',borderRadius:14,margin:14,padding:14},
-  mauTag:{fontSize:9,fontWeight:'700',color:'#F5A623',backgroundColor:'rgba(245,166,35,0.2)',paddingHorizontal:8,paddingVertical:2,borderRadius:8,alignSelf:'flex-start' as const,marginBottom:8},
-  mauTitle:{fontSize:14,fontWeight:'700',color:'#fff',marginBottom:4},
-  mauDesc:{fontSize:11,color:'rgba(255,255,255,0.65)',marginBottom:12},
-  mauProgressLabel:{flexDirection:'row',justifyContent:'space-between',marginBottom:5},
-  mauProgressText:{fontSize:10,color:'rgba(255,255,255,0.65)'},
-  mauBar:{backgroundColor:'rgba(255,255,255,0.15)',borderRadius:4,height:6,overflow:'hidden'},
-  mauFill:{height:'100%' as any,backgroundColor:'#F5A623',borderRadius:4},
   secTitle:{fontSize:10,fontWeight:'700',color:'#aaa',letterSpacing:1,paddingHorizontal:14,paddingTop:12,paddingBottom:8,textTransform:'uppercase' as const},
   featCard:{backgroundColor:'#fff',borderRadius:16,marginHorizontal:14,marginBottom:12,overflow:'hidden'},
   cardImg:{height:148,alignItems:'center',justifyContent:'center',position:'relative'},
