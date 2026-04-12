@@ -191,6 +191,9 @@ export default function App() {
   const [posts, setPosts] = useState<any[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
   const [postFilter, setPostFilter] = useState('latest')
+  const [aiCategory, setAiCategory] = useState<string>('food')
+  const [aiPlaces, setAiPlaces] = useState<any[]>([])
+  const [aiLoading, setAiLoading] = useState(false)
   const [bestTab, setBestTab] = useState<'daily'|'weekly'>('daily')
   const [dailyBest, setDailyBest] = useState<any[]>([])
   const [weeklyBest, setWeeklyBest] = useState<any[]>([])
@@ -440,6 +443,19 @@ export default function App() {
     const { data } = await q
     setPlaces(data || [])
     setLoading(false)
+  }
+
+  async function loadAiPlaces(cat: string) {
+    setAiLoading(true)
+    setAiCategory(cat)
+    const {data} = await supabase
+      .from('places')
+      .select('*')
+      .eq('category', cat)
+      .order('rating', {ascending: false})
+      .limit(10)
+    setAiPlaces(data||[])
+    setAiLoading(false)
   }
 
   async function loadBestPosts() {
@@ -844,14 +860,83 @@ export default function App() {
 
         {/* AI 탭 */}
         {tab==='ai'&&(
-          <View style={s.aiContainer}>
-            <Text style={s.pageTitle}>✨ {L.nav_ai}</Text>
-            <View style={s.aiBox}>
-              <Text style={s.aiTitle}>🤖 맞춤 장소 추천</Text>
-              <Text style={s.aiDesc}>저장한 장소와 리뷰를 분석해서{'\n'}딱 맞는 곳을 추천해드릴게요</Text>
-              <View style={s.aiChips}>{[{key:'food',label:'🍽 맛집'},{key:'cafe',label:'☕ 카페'},{key:'spot',label:'📍 명소'},{key:'shopping',label:'🛍 쇼핑'},{key:'activity',label:'🎯 액티비티'}].map(chip=><TouchableOpacity key={chip.key} style={s.aiChip}><Text style={s.aiChipText}>{chip.label}</Text></TouchableOpacity>)}</View>
+          <View style={{flex:1}}>
+            <View style={{padding:16, paddingBottom:8}}>
+              <Text style={{fontSize:20, fontWeight:'800', color:'#1a1a1a', marginBottom:4}}>✨ AI추천</Text>
+              <Text style={{fontSize:13, color:'#888', marginBottom:16}}>카테고리를 선택하면 인기 장소를 추천해드려요</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:8}}>
+                <View style={{flexDirection:'row', gap:8, paddingRight:16}}>
+                  {[
+                    {key:'food', label:'🍽 맛집'},
+                    {key:'cafe', label:'☕ 카페'},
+                    {key:'spot', label:'📍 명소'},
+                    {key:'shopping', label:'🛍 쇼핑'},
+                    {key:'activity', label:'🎯 액티비티'},
+                  ].map(c=>(
+                    <TouchableOpacity key={c.key}
+                      onPress={()=>loadAiPlaces(c.key)}
+                      style={{paddingHorizontal:16, paddingVertical:8, borderRadius:20,
+                        backgroundColor: aiCategory===c.key ? '#C8102E' : '#f0f0f0'}}>
+                      <Text style={{color: aiCategory===c.key ? '#fff' : '#555', fontWeight:'600', fontSize:13}}>{c.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
             </View>
-            <Text style={s.aiSoon}>AI 추천 기능은 다음 단계에서 추가됩니다 🚀</Text>
+            {aiLoading ? (
+              <View style={{flex:1, justifyContent:'center', alignItems:'center'}}>
+                <ActivityIndicator size="large" color="#C8102E"/>
+                <Text style={{marginTop:12, color:'#888', fontSize:13}}>추천 장소를 불러오는 중...</Text>
+              </View>
+            ) : (
+              <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false}>
+                <View style={{paddingHorizontal:16, paddingBottom:8}}>
+                  <Text style={{fontSize:13, color:'#888'}}>⭐ 평점 높은 순 TOP {aiPlaces.length}</Text>
+                </View>
+                {aiPlaces.map((place:any, idx:number)=>(
+                  <TouchableOpacity key={place.id}
+                    style={{marginHorizontal:16, marginBottom:12, backgroundColor:'#fff',
+                      borderRadius:12, padding:16, borderWidth:1, borderColor:'#f0f0f0',
+                      shadowColor:'#000', shadowOpacity:0.04, shadowRadius:4}}
+                    onPress={()=>openDetail(place)}>
+                    <View style={{flexDirection:'row', alignItems:'center', gap:12}}>
+                      <View style={{width:48, height:48, borderRadius:12, backgroundColor:'#f8f5f0',
+                        justifyContent:'center', alignItems:'center'}}>
+                        <Text style={{fontSize:28}}>{place.emoji||'📍'}</Text>
+                      </View>
+                      <View style={{flex:1}}>
+                        <View style={{flexDirection:'row', alignItems:'center', gap:6}}>
+                          <Text style={{fontSize:13, fontWeight:'700', color:'#1a1a1a', flex:1}} numberOfLines={1}>{place.name}</Text>
+                          <View style={{backgroundColor: idx===0?'#FFF3CD':idx===1?'#F0F0F0':idx===2?'#FDE8D8':'transparent',
+                            paddingHorizontal:6, paddingVertical:2, borderRadius:8}}>
+                            <Text style={{fontSize:10, fontWeight:'700', color: idx===0?'#F5A623':idx===1?'#888':idx===2?'#CD7F32':'transparent'}}>
+                              {idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':''}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={{fontSize:11, color:'#888', marginTop:2}}>{place.city} · {place.district}</Text>
+                        <View style={{flexDirection:'row', alignItems:'center', gap:4, marginTop:4}}>
+                          <Text style={{fontSize:12, color:'#F5A623'}}>{'★'.repeat(Math.round(place.rating))}{'☆'.repeat(5-Math.round(place.rating))}</Text>
+                          <Text style={{fontSize:11, color:'#888'}}>{place.rating}</Text>
+                          {place.price_range&&<Text style={{fontSize:11, color:'#aaa', marginLeft:4}}>{place.price_range==='free'?'무료':place.price_range}</Text>}
+                        </View>
+                      </View>
+                      <TouchableOpacity onPress={()=>toggleSave(place.id)} style={{padding:4}}>
+                        <Text style={{fontSize:20}}>{saved.includes(place.id)?'❤️':'🤍'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {place.hours&&(
+                      <View style={{marginTop:10, paddingTop:10, borderTopWidth:1, borderTopColor:'#f5f5f5',
+                        flexDirection:'row', alignItems:'center', gap:6}}>
+                        <Text style={{fontSize:11, color:'#888'}}>⏰ {place.hours}</Text>
+                        {place.address&&<Text style={{fontSize:11, color:'#aaa', flex:1}} numberOfLines={1}>· {place.address}</Text>}
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+                <View style={{height:20}}/>
+              </ScrollView>
+            )}
           </View>
         )}
 
@@ -1089,7 +1174,7 @@ export default function App() {
         {/* 하단 탭바 */}
         <View style={s.tabBar}>
           {[{key:'explore',icon:'🗺',label:L.nav_explore},{key:'ai',icon:'✨',label:L.nav_ai},{key:'community',icon:'💬',label:L.nav_community},{key:'profile',icon:'👤',label:L.nav_me}].map(t=>(
-            <TouchableOpacity key={t.key} style={s.tabBtn} onPress={()=>setTab(t.key)}>
+            <TouchableOpacity key={t.key} style={s.tabBtn} onPress={()=>{setTab(t.key);if(t.key==='ai')loadAiPlaces('food')}}>
               <Text style={[s.tabIcon,tab===t.key&&s.tabIconActive]}>{t.icon}</Text>
               <Text style={[s.tabLabel,tab===t.key&&s.tabLabelActive]}>{t.label}</Text>
             </TouchableOpacity>
