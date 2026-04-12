@@ -277,15 +277,12 @@ export default function App() {
       setUser(session?.user ?? null)
       setAuthLoading(false)
     })
-    supabase.auth.onAuthStateChange((_event, session)=>{
+    supabase.auth.onAuthStateChange((event, session)=>{
       setUser(session?.user ?? null)
-    })
-    if(typeof window !== 'undefined') {
-      const hash = window.location.hash
-      if(hash.includes('type=recovery')) {
+      if(event === 'PASSWORD_RECOVERY') {
         setShowNewPasswordModal(true)
       }
-    }
+    })
   }, [])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
