@@ -194,7 +194,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
-  const [authMode, setAuthMode] = useState<'login'|'signup'|'verify'>('login')
+  const [authMode, setAuthMode] = useState<'login'|'signup'|'verify'|'reset'>('login')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [authNickname, setAuthNickname] = useState('')
@@ -529,6 +529,25 @@ export default function App() {
     const {error} = await supabase.auth.signUp({
       email:authEmail, password:authPassword,
       options:{data:{nickname:authNickname}}
+    })
+    if(error) {
+      if(error.message.includes('already registered') || error.message.includes('already been registered')) {
+        setAuthError('이미 가입된 이메일입니다. 로그인을 시도해보세요.')
+      } else {
+        setAuthError(error.message)
+      }
+      setAuthSubmitting(false)
+      return
+    }
+    setAuthError(''); setAuthMode('verify')
+    setAuthSubmitting(false)
+  }
+
+  async function resetPassword() {
+    if(!authEmail.trim()) { setAuthError('이메일을 입력해주세요'); return }
+    setAuthSubmitting(true); setAuthError('')
+    const {error} = await supabase.auth.resetPasswordForEmail(authEmail, {
+      redirectTo: 'https://www.kculture-map.com'
     })
     if(error) setAuthError(error.message)
     else { setAuthError(''); setAuthMode('verify') }
@@ -1344,7 +1363,7 @@ export default function App() {
                 <Text style={{fontSize:16,color:'#C8102E'}}>✕ 닫기</Text>
               </TouchableOpacity>
               <Text style={{flex:1,textAlign:'center',fontWeight:'700',fontSize:16}}>
-                {authMode==='login'?'로그인':authMode==='signup'?'회원가입':'이메일 인증'}
+                {authMode==='login'?'로그인':authMode==='signup'?'회원가입':authMode==='reset'?'비밀번호 재설정':'이메일 인증'}
               </Text>
             </View>
             {authMode==='verify' ? (
@@ -1352,12 +1371,11 @@ export default function App() {
                 <Text style={{fontSize:48, marginBottom:16}}>📧</Text>
                 <Text style={{fontSize:20, fontWeight:'700', marginBottom:12, textAlign:'center'}}>이메일을 확인해주세요!</Text>
                 <Text style={{color:'#666', textAlign:'center', lineHeight:24, marginBottom:8}}>
-                  {authEmail} 으로 인증 메일을 보냈습니다.
+                  {authEmail} 으로 메일을 보냈습니다.
                 </Text>
                 <Text style={{color:'#666', textAlign:'center', lineHeight:24, marginBottom:32}}>
-                  메일함에서 [K컬처MAP] 인증 메일을 열고{'\n'}
-                  "이메일 인증하기" 버튼을 클릭하면{'\n'}
-                  로그인이 가능합니다.
+                  인증 또는 비밀번호 재설정 링크가 발송되었습니다.{'\n'}
+                  메일함에서 링크를 클릭해주세요.
                 </Text>
                 <TouchableOpacity style={{backgroundColor:'#C8102E', padding:16, borderRadius:10, width:'100%', alignItems:'center', marginBottom:12}} onPress={()=>setAuthMode('login')}>
                   <Text style={{color:'#fff', fontWeight:'700'}}>로그인 화면으로</Text>
@@ -1366,49 +1384,83 @@ export default function App() {
               </View>
             ) : (
             <ScrollView style={{flex:1,padding:24}}>
-              <Text style={{fontSize:28,fontWeight:'900',color:'#0D1B2A',textAlign:'center',marginBottom:8}}>K<Text style={{color:'#F5A623'}}>컬처</Text>MAP</Text>
-              <Text style={{textAlign:'center',color:'#888',marginBottom:32,fontSize:14}}>한국 여행의 모든 것</Text>
-              {authMode==='signup'&&(
-                <TextInput
-                  style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
-                  placeholder="닉네임 (커뮤니티에서 사용할 이름)"
-                  value={authNickname}
-                  onChangeText={setAuthNickname}
-                  placeholderTextColor="#bbb"
-                />
+              {authMode==='reset' ? (
+                <>
+                  <Text style={{fontSize:20,fontWeight:'700',textAlign:'center',marginBottom:8}}>비밀번호 재설정</Text>
+                  <Text style={{color:'#888',textAlign:'center',marginBottom:24,fontSize:14}}>가입하신 이메일을 입력하면{'\n'}재설정 링크를 보내드립니다.</Text>
+                  <TextInput
+                    style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                    placeholder="이메일"
+                    value={authEmail}
+                    onChangeText={setAuthEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor="#bbb"
+                  />
+                  {authError?<Text style={{color:'#C8102E',marginBottom:12,fontSize:13}}>{authError}</Text>:null}
+                  <TouchableOpacity
+                    style={{backgroundColor:'#C8102E',padding:16,borderRadius:10,alignItems:'center',marginBottom:16,opacity:authSubmitting?0.6:1}}
+                    onPress={resetPassword}
+                    disabled={authSubmitting}
+                  >
+                    <Text style={{color:'#fff',fontWeight:'700',fontSize:16}}>{authSubmitting?'전송 중...':'재설정 링크 보내기'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={()=>{setAuthMode('login');setAuthError('')}} style={{alignItems:'center'}}>
+                    <Text style={{color:'#666',fontSize:14}}>로그인으로 돌아가기</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={{fontSize:28,fontWeight:'900',color:'#0D1B2A',textAlign:'center',marginBottom:8}}>K<Text style={{color:'#F5A623'}}>컬처</Text>MAP</Text>
+                  <Text style={{textAlign:'center',color:'#888',marginBottom:32,fontSize:14}}>한국 여행의 모든 것</Text>
+                  {authMode==='signup'&&(
+                    <TextInput
+                      style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                      placeholder="닉네임 (커뮤니티에서 사용할 이름)"
+                      value={authNickname}
+                      onChangeText={setAuthNickname}
+                      placeholderTextColor="#bbb"
+                    />
+                  )}
+                  <TextInput
+                    style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                    placeholder="이메일"
+                    value={authEmail}
+                    onChangeText={setAuthEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor="#bbb"
+                  />
+                  <TextInput
+                    style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                    placeholder="비밀번호 (6자 이상)"
+                    value={authPassword}
+                    onChangeText={setAuthPassword}
+                    secureTextEntry
+                    placeholderTextColor="#bbb"
+                  />
+                  {authError?<Text style={{color:'#C8102E',marginBottom:12,fontSize:13}}>{authError}</Text>:null}
+                  <TouchableOpacity
+                    style={{backgroundColor:'#C8102E',padding:16,borderRadius:10,alignItems:'center',marginBottom:16,opacity:authSubmitting?0.6:1}}
+                    onPress={authMode==='login'?signIn:signUp}
+                    disabled={authSubmitting}
+                  >
+                    <Text style={{color:'#fff',fontWeight:'700',fontSize:16}}>
+                      {authSubmitting?'처리 중...':(authMode==='login'?'로그인':'가입하기')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={()=>{setAuthMode(authMode==='login'?'signup':'login');setAuthError('')}} style={{alignItems:'center'}}>
+                    <Text style={{color:'#666',fontSize:14}}>
+                      {authMode==='login'?'계정이 없으신가요? 회원가입':'이미 계정이 있으신가요? 로그인'}
+                    </Text>
+                  </TouchableOpacity>
+                  {authMode==='login'&&(
+                    <TouchableOpacity onPress={()=>{setAuthMode('reset');setAuthError('')}} style={{alignItems:'center',marginTop:8}}>
+                      <Text style={{color:'#aaa',fontSize:13}}>비밀번호를 잊으셨나요?</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
-              <TextInput
-                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
-                placeholder="이메일"
-                value={authEmail}
-                onChangeText={setAuthEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholderTextColor="#bbb"
-              />
-              <TextInput
-                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
-                placeholder="비밀번호 (6자 이상)"
-                value={authPassword}
-                onChangeText={setAuthPassword}
-                secureTextEntry
-                placeholderTextColor="#bbb"
-              />
-              {authError?<Text style={{color:'#C8102E',marginBottom:12,fontSize:13}}>{authError}</Text>:null}
-              <TouchableOpacity
-                style={{backgroundColor:'#C8102E',padding:16,borderRadius:10,alignItems:'center',marginBottom:16,opacity:authSubmitting?0.6:1}}
-                onPress={authMode==='login'?signIn:signUp}
-                disabled={authSubmitting}
-              >
-                <Text style={{color:'#fff',fontWeight:'700',fontSize:16}}>
-                  {authSubmitting?'처리 중...':(authMode==='login'?'로그인':'가입하기')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={()=>{setAuthMode(authMode==='login'?'signup':'login');setAuthError('')}} style={{alignItems:'center'}}>
-                <Text style={{color:'#666',fontSize:14}}>
-                  {authMode==='login'?'계정이 없으신가요? 회원가입':'이미 계정이 있으신가요? 로그인'}
-                </Text>
-              </TouchableOpacity>
             </ScrollView>
             )}
           </SafeAreaView>
