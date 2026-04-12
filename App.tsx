@@ -648,10 +648,32 @@ export default function App() {
     await loadComments(selectedPost.id)
   }
 
-  async function likePost(post:any) {
-    await supabase.from('posts').update({likes:post.likes+1}).eq('id',post.id)
+  async function likePost(post: any) {
+    let identifier = user?.id
+    if(!identifier) {
+      let deviceId = localStorage.getItem('kculture_device_id')
+      if(!deviceId) {
+        deviceId = 'device_' + Math.random().toString(36).substr(2,9) + '_' + Date.now()
+        localStorage.setItem('kculture_device_id', deviceId)
+      }
+      identifier = deviceId
+    }
+    const {data:existing} = await supabase
+      .from('post_likes')
+      .select('id')
+      .eq('post_id', post.id)
+      .eq('user_identifier', identifier)
+      .single()
+    if(existing) {
+      window.alert('이미 추천한 게시글입니다!')
+      return
+    }
+    await supabase.from('post_likes').insert({
+      post_id: post.id,
+      user_identifier: identifier
+    })
+    await supabase.from('posts').update({likes: post.likes + 1}).eq('id', post.id)
     await loadPosts()
-    if(selectedPost?.id===post.id) setSelectedPost({...post, likes:post.likes+1})
   }
 
   const TRANSLATE_LANG_MAP: any = {
