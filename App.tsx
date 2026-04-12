@@ -827,7 +827,7 @@ export default function App() {
             <View style={s.aiBox}>
               <Text style={s.aiTitle}>🤖 맞춤 장소 추천</Text>
               <Text style={s.aiDesc}>저장한 장소와 리뷰를 분석해서{'\n'}딱 맞는 곳을 추천해드릴게요</Text>
-              <View style={s.aiChips}>{[L.cat_food,L.cat_spot,L.cat_cafe,L.cat_night].map(chip=><TouchableOpacity key={chip} style={s.aiChip}><Text style={s.aiChipText}>{chip}</Text></TouchableOpacity>)}</View>
+              <View style={s.aiChips}>{[{key:'food',label:'🍽 맛집'},{key:'cafe',label:'☕ 카페'},{key:'spot',label:'📍 명소'},{key:'shopping',label:'🛍 쇼핑'},{key:'activity',label:'🎯 액티비티'}].map(chip=><TouchableOpacity key={chip.key} style={s.aiChip}><Text style={s.aiChipText}>{chip.label}</Text></TouchableOpacity>)}</View>
             </View>
             <Text style={s.aiSoon}>AI 추천 기능은 다음 단계에서 추가됩니다 🚀</Text>
           </View>
