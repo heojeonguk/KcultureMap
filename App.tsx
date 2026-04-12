@@ -191,6 +191,15 @@ export default function App() {
   const [posts, setPosts] = useState<any[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
   const [postFilter, setPostFilter] = useState('latest')
+  const [user, setUser] = useState<any>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authMode, setAuthMode] = useState<'login'|'signup'>('login')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authNickname, setAuthNickname] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authSubmitting, setAuthSubmitting] = useState(false)
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [showWriteModal, setShowWriteModal] = useState(false)
@@ -258,6 +267,15 @@ export default function App() {
     { label:L.grp_activity, items:[{key:'activity',label:L.cat_activity,color:'#6B21A8'},{key:'activity_c',label:L.cat_cooking,color:'#6B21A8'},{key:'activity_s',label:L.cat_spa,color:'#6B21A8'},{key:'activity_n',label:L.cat_night,color:'#374151'}]},
   ]
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({data:{session}})=>{
+      setUser(session?.user ?? null)
+      setAuthLoading(false)
+    })
+    supabase.auth.onAuthStateChange((_event, session)=>{
+      setUser(session?.user ?? null)
+    })
+  }, [])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
   useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
@@ -422,16 +440,17 @@ export default function App() {
   }
 
   async function loadMyData() {
-    const {data:p}=await supabase.from('posts').select('*').eq('user_name','나').order('created_at',{ascending:false})
+    const myName = user?.user_metadata?.nickname||'익명'
+    const {data:p}=await supabase.from('posts').select('*').eq('user_name',myName).order('created_at',{ascending:false})
     setMyPosts(p||[])
     let r:any[] = []
     try {
-      const { data, error } = await supabase.from('reviews').select('*, places(id, name, emoji)').eq('user_name','나').order('created_at',{ascending:false})
+      const { data, error } = await supabase.from('reviews').select('*, places(id, name, emoji)').eq('user_name',myName).order('created_at',{ascending:false})
       if (error) throw error
       r = data || []
     } catch(e) {
       console.warn('Review join failed, falling back to plain reviews', e)
-      const { data, error } = await supabase.from('reviews').select('*').eq('user_name','나').order('created_at',{ascending:false})
+      const { data, error } = await supabase.from('reviews').select('*').eq('user_name',myName).order('created_at',{ascending:false})
       if (error) console.error(error)
       r = data || []
     }
@@ -496,12 +515,38 @@ export default function App() {
     setPostPhotoUploading(false)
   }
 
+  async function signIn() {
+    setAuthSubmitting(true); setAuthError('')
+    const {error} = await supabase.auth.signInWithPassword({email:authEmail, password:authPassword})
+    if(error) setAuthError(error.message)
+    else { setShowAuthModal(false); setAuthEmail(''); setAuthPassword('') }
+    setAuthSubmitting(false)
+  }
+
+  async function signUp() {
+    if(!authNickname.trim()) { setAuthError('닉네임을 입력해주세요'); return }
+    setAuthSubmitting(true); setAuthError('')
+    const {error} = await supabase.auth.signUp({
+      email:authEmail, password:authPassword,
+      options:{data:{nickname:authNickname}}
+    })
+    if(error) setAuthError(error.message)
+    else { setAuthError(''); window.alert('가입 완료! 이메일을 확인해주세요.'); setAuthMode('login') }
+    setAuthSubmitting(false)
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
   async function submitPost() {
+    if(!user) { setShowAuthModal(true); return }
     if(!postTitle.trim()) { window.alert('제목을 입력해주세요'); return }
     if(!postContent.trim()) { window.alert('내용을 입력해주세요'); return }
     setPostSubmitting(true)
     const {error} = await supabase.from('posts').insert({
-      user_name:'나', nation:'✍️', title:postTitle.trim(),
+      user_name: user?.user_metadata?.nickname||'익명', nation:'✍️', title:postTitle.trim(),
       content:postContent.trim(), city:postCity.trim()||null,
       category:postCategory, likes:0,
       photo_url: postPhoto || null,
@@ -515,10 +560,11 @@ export default function App() {
   }
 
   async function submitReview() {
+    if(!user) { setShowAuthModal(true); return }
     if(reviewStar===0) { window.alert('별점을 선택해주세요'); return }
     if(!reviewText.trim()) { window.alert('내용을 입력해주세요'); return }
     setSubmitting(true)
-    const {error} = await supabase.from('reviews').insert({ place_id:selectedPlace.id, user_name:'나', rating:reviewStar, content:reviewText.trim() })
+    const {error} = await supabase.from('reviews').insert({ place_id:selectedPlace.id, user_name: user?.user_metadata?.nickname||'익명', rating:reviewStar, content:reviewText.trim() })
     if(!error) { setReviewText(''); setReviewStar(0); setMyReviewCount(c=>c+1); await loadReviews(selectedPlace.id); window.alert('등록 완료!') }
     setSubmitting(false)
   }
@@ -526,7 +572,7 @@ export default function App() {
   async function submitComment() {
     if(!commentText.trim()) return
     await supabase.from('post_comments').insert({
-      post_id:selectedPost.id, user_name:'나', content:commentText.trim(),
+      post_id:selectedPost.id, user_name: user?.user_metadata?.nickname||'익명', content:commentText.trim(),
       parent_id: replyTo?.id || null,
     })
     setCommentText(''); setReplyTo(null)
@@ -763,9 +809,20 @@ export default function App() {
         {/* 나 탭 */}
         {tab==='profile'&&(
           <ScrollView style={{flex:1}}>
+            {!user ? (
+              <View style={{padding:40,alignItems:'center'}}>
+                <Text style={{fontSize:40,marginBottom:16}}>👤</Text>
+                <Text style={{fontSize:18,fontWeight:'700',marginBottom:8}}>로그인이 필요해요</Text>
+                <Text style={{color:'#888',marginBottom:24,textAlign:'center'}}>로그인하고 여행 기록을 남겨보세요</Text>
+                <TouchableOpacity style={{backgroundColor:'#C8102E',padding:16,borderRadius:10,width:'100%',alignItems:'center'}} onPress={()=>setShowAuthModal(true)}>
+                  <Text style={{color:'#fff',fontWeight:'700',fontSize:16}}>로그인 / 회원가입</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+            <>
             <View style={s.profileHeader}>
               <View style={s.profileAvatar}><Text style={{fontSize:30}}>✈️</Text></View>
-              <Text style={s.profileName}>Korea Explorer</Text>
+              <Text style={s.profileName}>{user?.user_metadata?.nickname||user?.email}</Text>
               <Text style={s.profileSub}>K컬처MAP 여행자</Text>
               <View style={s.statRow}>
                 <View style={s.statCell}><Text style={s.statVal}>{myReviewCount}</Text><Text style={s.statKey}>{L.review}</Text></View>
@@ -886,6 +943,11 @@ export default function App() {
                 <Text style={{fontSize:11, color:'#bbb', marginTop:4}}>© 2025 KcultureMAP. All rights reserved.</Text>
               </View>
             </View>
+            <TouchableOpacity onPress={signOut} style={{margin:16,padding:12,borderWidth:1,borderColor:'#ddd',borderRadius:8,alignItems:'center'}}>
+              <Text style={{color:'#888'}}>로그아웃</Text>
+            </TouchableOpacity>
+            </>
+            )}
           </ScrollView>
         )}
 
@@ -1272,6 +1334,63 @@ export default function App() {
               <Text style={{fontSize:14, lineHeight:24, color:'#333'}}>
 {`K컬처MAP 이용약관\n\n시행일: 2025년 1월 1일\n\n제1조 (목적)\n본 약관은 K컬처MAP(이하 "서비스")의 이용 조건 및 절차에 관한 사항을 규정합니다.\n\n제2조 (서비스 이용)\n- 서비스는 한국 여행 정보 제공 및 여행자 커뮤니티를 목적으로 합니다.\n- 누구나 무료로 이용할 수 있습니다.\n\n제3조 (이용자의 의무)\n- 타인의 명예를 훼손하는 게시물을 작성하지 않습니다.\n- 허위 정보를 게시하지 않습니다.\n- 저작권을 침해하는 콘텐츠를 업로드하지 않습니다.\n- 상업적 광고 및 스팸을 게시하지 않습니다.\n\n제4조 (게시물 관리)\n- 운영자는 부적절한 게시물을 사전 통보 없이 삭제할 수 있습니다.\n- 이용자는 본인이 작성한 게시물을 수정/삭제할 수 있습니다.\n\n제5조 (서비스 변경 및 중단)\n- 운영자는 서비스 내용을 변경하거나 중단할 수 있습니다.\n- 중단 시 사전에 공지합니다.\n\n제6조 (면책조항)\n- 이용자가 게시한 정보의 정확성에 대해 책임지지 않습니다.\n- 천재지변 등 불가항력으로 인한 서비스 중단에 대해 책임지지 않습니다.\n\n제7조 (문의)\n- 이메일: hellsong90@gmail.com`}
               </Text>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+        <Modal visible={showAuthModal} animationType="slide" onRequestClose={()=>setShowAuthModal(false)}>
+          <SafeAreaView style={{flex:1,backgroundColor:'#fff'}}>
+            <View style={{flexDirection:'row',alignItems:'center',padding:16,borderBottomWidth:1,borderBottomColor:'#eee'}}>
+              <TouchableOpacity onPress={()=>setShowAuthModal(false)}>
+                <Text style={{fontSize:16,color:'#C8102E'}}>✕ 닫기</Text>
+              </TouchableOpacity>
+              <Text style={{flex:1,textAlign:'center',fontWeight:'700',fontSize:16}}>
+                {authMode==='login'?'로그인':'회원가입'}
+              </Text>
+            </View>
+            <ScrollView style={{flex:1,padding:24}}>
+              <Text style={{fontSize:28,fontWeight:'900',color:'#0D1B2A',textAlign:'center',marginBottom:8}}>K<Text style={{color:'#F5A623'}}>컬처</Text>MAP</Text>
+              <Text style={{textAlign:'center',color:'#888',marginBottom:32,fontSize:14}}>한국 여행의 모든 것</Text>
+              {authMode==='signup'&&(
+                <TextInput
+                  style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                  placeholder="닉네임 (커뮤니티에서 사용할 이름)"
+                  value={authNickname}
+                  onChangeText={setAuthNickname}
+                  placeholderTextColor="#bbb"
+                />
+              )}
+              <TextInput
+                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                placeholder="이메일"
+                value={authEmail}
+                onChangeText={setAuthEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#bbb"
+              />
+              <TextInput
+                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                placeholder="비밀번호 (6자 이상)"
+                value={authPassword}
+                onChangeText={setAuthPassword}
+                secureTextEntry
+                placeholderTextColor="#bbb"
+              />
+              {authError?<Text style={{color:'#C8102E',marginBottom:12,fontSize:13}}>{authError}</Text>:null}
+              <TouchableOpacity
+                style={{backgroundColor:'#C8102E',padding:16,borderRadius:10,alignItems:'center',marginBottom:16,opacity:authSubmitting?0.6:1}}
+                onPress={authMode==='login'?signIn:signUp}
+                disabled={authSubmitting}
+              >
+                <Text style={{color:'#fff',fontWeight:'700',fontSize:16}}>
+                  {authSubmitting?'처리 중...':(authMode==='login'?'로그인':'가입하기')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={()=>{setAuthMode(authMode==='login'?'signup':'login');setAuthError('')}} style={{alignItems:'center'}}>
+                <Text style={{color:'#666',fontSize:14}}>
+                  {authMode==='login'?'계정이 없으신가요? 회원가입':'이미 계정이 있으신가요? 로그인'}
+                </Text>
+              </TouchableOpacity>
             </ScrollView>
           </SafeAreaView>
         </Modal>
