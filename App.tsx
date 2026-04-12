@@ -194,6 +194,11 @@ export default function App() {
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [showNewPasswordModal, setShowNewPasswordModal] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('')
+  const [newPasswordError, setNewPasswordError] = useState('')
+  const [newPasswordSubmitting, setNewPasswordSubmitting] = useState(false)
   const [authMode, setAuthMode] = useState<'login'|'signup'|'verify'|'reset'>('login')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
@@ -275,6 +280,12 @@ export default function App() {
     supabase.auth.onAuthStateChange((_event, session)=>{
       setUser(session?.user ?? null)
     })
+    if(typeof window !== 'undefined') {
+      const hash = window.location.hash
+      if(hash.includes('type=recovery')) {
+        setShowNewPasswordModal(true)
+      }
+    }
   }, [])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
@@ -552,6 +563,24 @@ export default function App() {
     if(error) setAuthError(error.message)
     else { setAuthError(''); setAuthMode('verify') }
     setAuthSubmitting(false)
+  }
+
+  async function updatePassword() {
+    if(newPassword.length < 6) { setNewPasswordError('비밀번호는 6자 이상이어야 합니다'); return }
+    if(newPassword !== newPasswordConfirm) { setNewPasswordError('비밀번호가 일치하지 않습니다'); return }
+    setNewPasswordSubmitting(true); setNewPasswordError('')
+    const {error} = await supabase.auth.updateUser({password: newPassword})
+    if(error) setNewPasswordError(error.message)
+    else {
+      window.alert('비밀번호가 변경되었습니다! 다시 로그인해주세요.')
+      setShowNewPasswordModal(false)
+      setNewPassword(''); setNewPasswordConfirm('')
+      await supabase.auth.signOut()
+      setShowAuthModal(true)
+      setAuthMode('login')
+      if(typeof window !== 'undefined') window.location.hash = ''
+    }
+    setNewPasswordSubmitting(false)
   }
 
   async function signOut() {
@@ -1463,6 +1492,41 @@ export default function App() {
               )}
             </ScrollView>
             )}
+          </SafeAreaView>
+        </Modal>
+        <Modal visible={showNewPasswordModal} animationType="slide" onRequestClose={()=>setShowNewPasswordModal(false)}>
+          <SafeAreaView style={{flex:1,backgroundColor:'#fff'}}>
+            <View style={{flexDirection:'row',alignItems:'center',padding:16,borderBottomWidth:1,borderBottomColor:'#eee'}}>
+              <Text style={{flex:1,textAlign:'center',fontWeight:'700',fontSize:16}}>새 비밀번호 설정</Text>
+            </View>
+            <View style={{flex:1,padding:24,justifyContent:'center'}}>
+              <Text style={{fontSize:24,textAlign:'center',marginBottom:8}}>🔐</Text>
+              <Text style={{fontSize:18,fontWeight:'700',textAlign:'center',marginBottom:24}}>새 비밀번호를 입력해주세요</Text>
+              <TextInput
+                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                placeholder="새 비밀번호 (6자 이상)"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                placeholderTextColor="#bbb"
+              />
+              <TextInput
+                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                placeholder="비밀번호 확인"
+                value={newPasswordConfirm}
+                onChangeText={setNewPasswordConfirm}
+                secureTextEntry
+                placeholderTextColor="#bbb"
+              />
+              {newPasswordError?<Text style={{color:'#C8102E',marginBottom:12,fontSize:13}}>{newPasswordError}</Text>:null}
+              <TouchableOpacity
+                style={{backgroundColor:'#C8102E',padding:16,borderRadius:10,alignItems:'center',opacity:newPasswordSubmitting?0.6:1}}
+                onPress={updatePassword}
+                disabled={newPasswordSubmitting}
+              >
+                <Text style={{color:'#fff',fontWeight:'700',fontSize:16}}>{newPasswordSubmitting?'변경 중...':'비밀번호 변경'}</Text>
+              </TouchableOpacity>
+            </View>
           </SafeAreaView>
         </Modal>
         <Modal visible={!!photoViewer} transparent={true} animationType="fade" onRequestClose={()=>setPhotoViewer(null)}>
