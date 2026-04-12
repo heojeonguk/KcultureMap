@@ -191,6 +191,8 @@ export default function App() {
   const [posts, setPosts] = useState<any[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
   const [postFilter, setPostFilter] = useState('latest')
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
   const [showWriteModal, setShowWriteModal] = useState(false)
   const [postTitle, setPostTitle] = useState('')
   const [postContent, setPostContent] = useState('')
@@ -874,6 +876,15 @@ export default function App() {
                   )}
                 </View>
               ))}
+              <View style={{padding:16, alignItems:'center', gap:8, marginTop:20, borderTopWidth:1, borderTopColor:'#eee'}}>
+                <TouchableOpacity onPress={()=>setShowTermsModal(true)}>
+                  <Text style={{fontSize:12, color:'#999', textDecorationLine:'underline'}}>이용약관</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={()=>setShowPrivacyModal(true)}>
+                  <Text style={{fontSize:12, color:'#999', textDecorationLine:'underline'}}>개인정보처리방침</Text>
+                </TouchableOpacity>
+                <Text style={{fontSize:11, color:'#bbb', marginTop:4}}>© 2025 KcultureMAP. All rights reserved.</Text>
+              </View>
             </View>
           </ScrollView>
         )}
@@ -1233,6 +1244,36 @@ export default function App() {
               </ScrollView>
             </View>
           )}
+        </Modal>
+        <Modal visible={showPrivacyModal} animationType="slide" onRequestClose={()=>setShowPrivacyModal(false)}>
+          <SafeAreaView style={{flex:1, backgroundColor:'#fff'}}>
+            <View style={{flexDirection:'row', alignItems:'center', padding:16, borderBottomWidth:1, borderBottomColor:'#eee'}}>
+              <TouchableOpacity onPress={()=>setShowPrivacyModal(false)}>
+                <Text style={{fontSize:16, color:'#C8102E'}}>✕ 닫기</Text>
+              </TouchableOpacity>
+              <Text style={{flex:1, textAlign:'center', fontWeight:'700', fontSize:16}}>개인정보처리방침</Text>
+            </View>
+            <ScrollView style={{flex:1, padding:20}}>
+              <Text style={{fontSize:14, lineHeight:24, color:'#333'}}>
+{`K컬처MAP 개인정보처리방침\n\n시행일: 2025년 1월 1일\n\n1. 수집하는 개인정보 항목\n- 서비스 이용 시 사용자가 직접 입력한 닉네임, 게시글, 댓글, 리뷰 내용\n- 사용자가 업로드한 사진\n- 서비스 이용 기록\n\n2. 개인정보 수집 및 이용 목적\n- 커뮤니티 서비스 제공\n- 여행지 리뷰 서비스 제공\n- 서비스 개선 및 신규 서비스 개발\n\n3. 개인정보 보유 및 이용 기간\n- 서비스 이용 기간 동안 보유\n- 사용자 요청 시 즉시 삭제\n\n4. 개인정보의 제3자 제공\n- 원칙적으로 외부에 제공하지 않습니다.\n- 법령에 의한 경우 예외적으로 제공될 수 있습니다.\n\n5. 개인정보 처리 위탁\n- Supabase (데이터 저장 및 관리)\n- Vercel (서비스 호스팅)\n\n6. 이용자의 권리\n- 개인정보 열람, 수정, 삭제 요청 가능\n- 아래 이메일로 문의하시기 바랍니다.\n\n7. 개인정보 보호책임자\n- 이메일: hellsong90@gmail.com\n\n8. 개인정보처리방침 변경\n- 변경 시 앱 내 공지를 통해 안내합니다.`}
+              </Text>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+        <Modal visible={showTermsModal} animationType="slide" onRequestClose={()=>setShowTermsModal(false)}>
+          <SafeAreaView style={{flex:1, backgroundColor:'#fff'}}>
+            <View style={{flexDirection:'row', alignItems:'center', padding:16, borderBottomWidth:1, borderBottomColor:'#eee'}}>
+              <TouchableOpacity onPress={()=>setShowTermsModal(false)}>
+                <Text style={{fontSize:16, color:'#C8102E'}}>✕ 닫기</Text>
+              </TouchableOpacity>
+              <Text style={{flex:1, textAlign:'center', fontWeight:'700', fontSize:16}}>이용약관</Text>
+            </View>
+            <ScrollView style={{flex:1, padding:20}}>
+              <Text style={{fontSize:14, lineHeight:24, color:'#333'}}>
+{`K컬처MAP 이용약관\n\n시행일: 2025년 1월 1일\n\n제1조 (목적)\n본 약관은 K컬처MAP(이하 "서비스")의 이용 조건 및 절차에 관한 사항을 규정합니다.\n\n제2조 (서비스 이용)\n- 서비스는 한국 여행 정보 제공 및 여행자 커뮤니티를 목적으로 합니다.\n- 누구나 무료로 이용할 수 있습니다.\n\n제3조 (이용자의 의무)\n- 타인의 명예를 훼손하는 게시물을 작성하지 않습니다.\n- 허위 정보를 게시하지 않습니다.\n- 저작권을 침해하는 콘텐츠를 업로드하지 않습니다.\n- 상업적 광고 및 스팸을 게시하지 않습니다.\n\n제4조 (게시물 관리)\n- 운영자는 부적절한 게시물을 사전 통보 없이 삭제할 수 있습니다.\n- 이용자는 본인이 작성한 게시물을 수정/삭제할 수 있습니다.\n\n제5조 (서비스 변경 및 중단)\n- 운영자는 서비스 내용을 변경하거나 중단할 수 있습니다.\n- 중단 시 사전에 공지합니다.\n\n제6조 (면책조항)\n- 이용자가 게시한 정보의 정확성에 대해 책임지지 않습니다.\n- 천재지변 등 불가항력으로 인한 서비스 중단에 대해 책임지지 않습니다.\n\n제7조 (문의)\n- 이메일: hellsong90@gmail.com`}
+              </Text>
+            </ScrollView>
+          </SafeAreaView>
         </Modal>
         <Modal visible={!!photoViewer} transparent={true} animationType="fade" onRequestClose={()=>setPhotoViewer(null)}>
           <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.95)', justifyContent:'center', alignItems:'center'}}>
