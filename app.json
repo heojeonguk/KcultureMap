@@ -27,6 +27,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ac08f353-0343-4e94-af2b-6e640ad87b75"
+      }
+    },
+    "owner": "kculturemap"
   }
 }
