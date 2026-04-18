@@ -175,6 +175,20 @@ const AVATAR_COLORS = ['#C8102E','#1565C0','#1A7A4A','#8B5E3C','#6B21A8','#F5A62
 const getAvatarColor = (name: string) => AVATAR_COLORS[(name||'?').charCodeAt(0) % AVATAR_COLORS.length]
 
 export default function App() {
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const meta1 = document.createElement('meta');
+      meta1.name = 'naver-site-verification';
+      meta1.content = 'ee52cf50bd4f8a34251bea1748cec479867ba183';
+      document.head.appendChild(meta1);
+
+      const meta2 = document.createElement('meta');
+      meta2.name = 'google-site-verification';
+      meta2.content = 'trxvl4ZzO6Q-ZUqIMdSYd9vbkKghuCgmqxb-gDeX36o';
+      document.head.appendChild(meta2);
+    }
+  }, []);
+
   const exploreScrollRef = useRef<ScrollView>(null)
   const [lang, setLang] = useState('ko')
   const [tab, setTab] = useState('explore')
