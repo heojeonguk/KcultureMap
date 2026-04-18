@@ -27,8 +27,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
+      "name": "K컬처MAP - 한국 문화 여행 가이드",
+      "description": "K컬처MAP - 한국 여행의 모든 것. 맛집, 카페, 명소, 쇼핑, 액티비티 정보와 여행자 커뮤니티",
+      "lang": "ko",
       "meta": {
         "google-site-verification": "trxvl4ZzO6Q-ZUqIMdSYd9vbkKghuCgmqxb-gDeX36o",
+        "naver-site-verification": "ee52cf50bd4f8a34251bea1748cec479867ba183",
         "description": "K컬처MAP - 한국 여행의 모든 것. 맛집, 카페, 명소, 쇼핑, 액티비티",
         "keywords": "한국여행, Korea travel, K-culture, 맛집, 서울, 부산, 제주"
       }
