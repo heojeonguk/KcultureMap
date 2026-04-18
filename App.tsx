@@ -299,6 +299,11 @@ export default function App() {
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
   useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
   useEffect(() => { loadBestPosts() }, [])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', () => {});
+    }
+  }, [])
 
   const openEditModal = (post:any) => {
     setEditingPost(post)
@@ -776,7 +781,7 @@ export default function App() {
               <Text style={s.regionBarText}>{regionLabel}</Text>
               <Text style={s.regionBarArrow}>▼</Text>
             </TouchableOpacity>
-            <ScrollView ref={exploreScrollRef} style={{flex:1}} showsVerticalScrollIndicator={false} scrollsToTop={true}>
+            <ScrollView ref={exploreScrollRef} style={{flex:1}} showsVerticalScrollIndicator={false} scrollsToTop={true} onScroll={(e)=>{if(typeof window!=='undefined'){(window as any).__lastScrollY=e.nativeEvent.contentOffset.y;}}} scrollEventThrottle={16}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catScroll}>
                 {CATS.map(cat=>(
                   <TouchableOpacity key={cat.key} onPress={()=>setSelectedCat(cat.key)} style={[s.catPill,selectedCat===cat.key&&{backgroundColor:cat.color,borderColor:cat.color}]}>
@@ -903,7 +908,7 @@ export default function App() {
                 <Text style={{marginTop:12, color:'#888', fontSize:13}}>추천 장소를 불러오는 중...</Text>
               </View>
             ) : (
-              <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} scrollsToTop={true}>
+              <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} scrollsToTop={true} onScroll={(e)=>{if(typeof window!=='undefined'){(window as any).__lastScrollY=e.nativeEvent.contentOffset.y;}}} scrollEventThrottle={16}>
                 <View style={{paddingHorizontal:16, paddingBottom:8}}>
                   <Text style={{fontSize:13, color:'#888'}}>⭐ 평점 높은 순 TOP {aiPlaces.length}</Text>
                 </View>
@@ -1000,7 +1005,7 @@ export default function App() {
               ))}
             </ScrollView>
             {postsLoading?<View style={s.center}><ActivityIndicator size="large" color="#C8102E"/></View>:(
-              <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} scrollsToTop={true}>
+              <ScrollView style={{flex:1}} showsVerticalScrollIndicator={false} scrollsToTop={true} onScroll={(e)=>{if(typeof window!=='undefined'){(window as any).__lastScrollY=e.nativeEvent.contentOffset.y;}}} scrollEventThrottle={16}>
                 {posts.length===0&&<Text style={s.emptyText}>첫 번째 글을 작성해보세요!</Text>}
                 {posts.filter(p=>postFilter==='latest'||postFilter==='best'?true:p.category===postFilter).map((post:any)=>{
                   const commentCount = post.post_comments?.[0]?.count ?? 0;
@@ -1045,7 +1050,7 @@ export default function App() {
 
         {/* 나 탭 */}
         {tab==='profile'&&(
-          <ScrollView style={{flex:1}} scrollsToTop={true}>
+          <ScrollView style={{flex:1}} scrollsToTop={true} onScroll={(e)=>{if(typeof window!=='undefined'){(window as any).__lastScrollY=e.nativeEvent.contentOffset.y;}}} scrollEventThrottle={16}>
             {!user ? (
               <View style={{padding:40,alignItems:'center'}}>
                 <Text style={{fontSize:40,marginBottom:16}}>👤</Text>
