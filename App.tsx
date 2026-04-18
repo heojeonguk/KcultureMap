@@ -196,11 +196,13 @@ export default function App() {
   const [aiCategory, setAiCategory] = useState<string>('food')
   const [aiPlaces, setAiPlaces] = useState<any[]>([])
   const [aiLoading, setAiLoading] = useState(false)
-  const [bestTab, setBestTab] = useState<'daily'|'weekly'>('daily')
+  const [bestTab, setBestTab] = useState<'best'|'daily'|'weekly'>('best')
+  const [bestPosts, setBestPosts] = useState<any[]>([])
   const [dailyBest, setDailyBest] = useState<any[]>([])
   const [weeklyBest, setWeeklyBest] = useState<any[]>([])
   const [bestLoading, setBestLoading] = useState(false)
-  const [communityBestTab, setCommunityBestTab] = useState<'daily'|'weekly'>('daily')
+  const [communityBestTab, setCommunityBestTab] = useState<'best'|'daily'|'weekly'>('best')
+  const [communityBestPosts, setCommunityBestPosts] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -477,6 +479,11 @@ export default function App() {
       .order('likes', {ascending:false})
       .limit(10)
     setWeeklyBest(weekly||[])
+    const {data:best} = await supabase.from('posts').select('*, post_comments(count)')
+      .order('likes', {ascending:false})
+      .limit(10)
+    setBestPosts(best||[])
+    setCommunityBestPosts(best||[])
     setBestLoading(false)
   }
 
@@ -780,6 +787,9 @@ export default function App() {
                 <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, marginBottom:10}}>
                   <Text style={{fontSize:15, fontWeight:'700', color:'#1a1a1a'}}>🏆 커뮤니티 베스트</Text>
                   <View style={{flexDirection:'row', gap:8}}>
+                    <TouchableOpacity onPress={()=>setBestTab('best')} style={{paddingHorizontal:12, paddingVertical:4, borderRadius:12, backgroundColor:bestTab==='best'?'#C8102E':'#f0f0f0'}}>
+                      <Text style={{fontSize:12, color:bestTab==='best'?'#fff':'#666', fontWeight:'600'}}>🏆 베스트</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={()=>setBestTab('daily')} style={{paddingHorizontal:12, paddingVertical:4, borderRadius:12, backgroundColor:bestTab==='daily'?'#C8102E':'#f0f0f0'}}>
                       <Text style={{fontSize:12, color:bestTab==='daily'?'#fff':'#666', fontWeight:'600'}}>일일</Text>
                     </TouchableOpacity>
@@ -789,10 +799,10 @@ export default function App() {
                   </View>
                 </View>
                 {bestLoading?<ActivityIndicator size="small" color="#C8102E" style={{padding:16}}/>:(
-                  (bestTab==='daily'?dailyBest:weeklyBest).length===0
+                  (bestTab==='best'?bestPosts:bestTab==='daily'?dailyBest:weeklyBest).length===0
                   ? <Text style={{textAlign:'center', color:'#aaa', fontSize:13, padding:16}}>아직 게시글이 없습니다</Text>
-                  : (bestTab==='daily'?dailyBest:weeklyBest).map((post:any, idx:number)=>(
-                    <TouchableOpacity key={post.id} style={{flexDirection:'row', alignItems:'center', paddingHorizontal:16, paddingVertical:8, borderBottomWidth:idx<(bestTab==='daily'?dailyBest:weeklyBest).length-1?1:0, borderBottomColor:'#f5f5f5'}}
+                  : (bestTab==='best'?bestPosts:bestTab==='daily'?dailyBest:weeklyBest).map((post:any, idx:number)=>(
+                    <TouchableOpacity key={post.id} style={{flexDirection:'row', alignItems:'center', paddingHorizontal:16, paddingVertical:8, borderBottomWidth:idx<(bestTab==='best'?bestPosts:bestTab==='daily'?dailyBest:weeklyBest).length-1?1:0, borderBottomColor:'#f5f5f5'}}
                       onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
                       <Text style={{fontSize:16, fontWeight:'800', color:idx===0?'#F5A623':idx===1?'#888':idx===2?'#cd7f32':'#ccc', width:28}}>{idx+1}</Text>
                       <View style={{flex:1}}>
@@ -954,6 +964,9 @@ export default function App() {
               <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, marginBottom:10}}>
                 <Text style={{fontSize:15, fontWeight:'700', color:'#1a1a1a'}}>🏆 커뮤니티 베스트</Text>
                 <View style={{flexDirection:'row', gap:8}}>
+                  <TouchableOpacity onPress={()=>setCommunityBestTab('best')} style={{paddingHorizontal:12, paddingVertical:4, borderRadius:12, backgroundColor:communityBestTab==='best'?'#C8102E':'#f0f0f0'}}>
+                    <Text style={{fontSize:12, color:communityBestTab==='best'?'#fff':'#666', fontWeight:'600'}}>🏆 베스트</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={()=>setCommunityBestTab('daily')} style={{paddingHorizontal:12, paddingVertical:4, borderRadius:12, backgroundColor:communityBestTab==='daily'?'#C8102E':'#f0f0f0'}}>
                     <Text style={{fontSize:12, color:communityBestTab==='daily'?'#fff':'#666', fontWeight:'600'}}>일일</Text>
                   </TouchableOpacity>
@@ -963,10 +976,10 @@ export default function App() {
                 </View>
               </View>
               {bestLoading?<ActivityIndicator size="small" color="#C8102E" style={{padding:16}}/>:(
-                (communityBestTab==='daily'?dailyBest:weeklyBest).length===0
+                (communityBestTab==='best'?communityBestPosts:communityBestTab==='daily'?dailyBest:weeklyBest).length===0
                 ? <Text style={{textAlign:'center', color:'#aaa', fontSize:13, padding:16}}>아직 게시글이 없습니다</Text>
-                : (communityBestTab==='daily'?dailyBest:weeklyBest).map((post:any, idx:number)=>(
-                  <TouchableOpacity key={post.id} style={{flexDirection:'row', alignItems:'center', paddingHorizontal:16, paddingVertical:8, borderBottomWidth:idx<(communityBestTab==='daily'?dailyBest:weeklyBest).length-1?1:0, borderBottomColor:'#f5f5f5'}}
+                : (communityBestTab==='best'?communityBestPosts:communityBestTab==='daily'?dailyBest:weeklyBest).map((post:any, idx:number)=>(
+                  <TouchableOpacity key={post.id} style={{flexDirection:'row', alignItems:'center', paddingHorizontal:16, paddingVertical:8, borderBottomWidth:idx<(communityBestTab==='best'?communityBestPosts:communityBestTab==='daily'?dailyBest:weeklyBest).length-1?1:0, borderBottomColor:'#f5f5f5'}}
                     onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
                     <Text style={{fontSize:16, fontWeight:'800', color:idx===0?'#F5A623':idx===1?'#888':idx===2?'#cd7f32':'#ccc', width:28}}>{idx+1}</Text>
                     <View style={{flex:1}}>
