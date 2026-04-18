@@ -4,7 +4,7 @@ import {
   ActivityIndicator, StyleSheet, Modal,
   Linking, TextInput, Alert, Image, Platform
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '@supabase/supabase-js'
@@ -752,7 +752,8 @@ export default function App() {
   const getReplies = (parentId:string) => postComments.filter(c=>c.parent_id===parentId)
 
   return (
-    <SafeAreaView edges={['top']} style={s.safe}>
+    <SafeAreaProvider>
+    <SafeAreaView style={s.safe}>
       <StatusBar style="light" backgroundColor="#0D1B2A" />
       <View style={s.container}>
 
@@ -1730,6 +1731,7 @@ export default function App() {
 
       </View>
     </SafeAreaView>
+    </SafeAreaProvider>
   )
 }
 
