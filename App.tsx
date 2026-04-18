@@ -2,8 +2,10 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, StyleSheet, Modal,
-  Linking, TextInput, Alert, SafeAreaView, Image, Platform
+  Linking, TextInput, Alert, Image, Platform
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '@supabase/supabase-js'
 
@@ -743,7 +745,8 @@ export default function App() {
   const getReplies = (parentId:string) => postComments.filter(c=>c.parent_id===parentId)
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView edges={['top']} style={s.safe}>
+      <StatusBar style="light" backgroundColor="#0D1B2A" />
       <View style={s.container}>
 
         {/* 상단 바 */}
@@ -1172,7 +1175,7 @@ export default function App() {
         )}
 
         {/* 하단 탭바 */}
-        <View style={s.tabBar}>
+        <View style={[s.tabBar, {paddingBottom: Platform.OS === 'android' ? 16 : 0}]}>
           {[{key:'explore',icon:'🗺',label:L.nav_explore},{key:'ai',icon:'✨',label:L.nav_ai},{key:'community',icon:'💬',label:L.nav_community},{key:'profile',icon:'👤',label:L.nav_me}].map(t=>(
             <TouchableOpacity key={t.key} style={s.tabBtn} onPress={()=>{setTab(t.key);if(t.key==='ai')loadAiPlaces('food')}}>
               <Text style={[s.tabIcon,tab===t.key&&s.tabIconActive]}>{t.icon}</Text>
