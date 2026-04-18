@@ -993,7 +993,7 @@ export default function App() {
               )}
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.postFilterRow}>
-              {[{key:'latest',label:L.latest},{key:'best',label:`🏆 ${L.best}`},{key:'food',label:L.food_post},{key:'spot',label:L.spot_post},{key:'cafe',label:L.cafe_post},{key:'activity',label:'🎯 액티비티'},{key:'free',label:L.free_post}].map(f=>(
+              {[{key:'latest',label:L.latest},{key:'best',label:`🏆 ${L.best}`},{key:'free',label:L.free_post},{key:'food',label:L.food_post},{key:'spot',label:L.spot_post},{key:'cafe',label:L.cafe_post},{key:'activity',label:'🎯 액티비티'}].map(f=>(
                 <TouchableOpacity key={f.key} style={[s.postFilterBtn,postFilter===f.key&&s.postFilterBtnActive]} onPress={()=>setPostFilter(f.key)}>
                   <Text style={[s.postFilterText,postFilter===f.key&&s.postFilterTextActive]}>{f.label}</Text>
                 </TouchableOpacity>
