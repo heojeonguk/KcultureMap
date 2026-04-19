@@ -506,6 +506,8 @@ export default function App() {
         const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
         setProfileImage(data.publicUrl);
         await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
+        const { data: { user: updatedUser } } = await supabase.auth.getUser();
+        if (updatedUser) setUser(updatedUser);
         await supabase.from('posts').update({ avatar_url: data.publicUrl }).eq('user_id', user.id);
       }
     };
