@@ -295,10 +295,10 @@ export default function App() {
 
   const CATS = [
     {key:'all',    label:'✨ 전체',    color:'#0D1B2A'},
-    {key:'food',   label:'🍽 맛집',    color:'#C8102E'},
+    {key:'food',   label:'🍽️ 맛집',    color:'#C8102E'},
     {key:'cafe',   label:'☕ 카페',    color:'#8B5E3C'},
     {key:'spot',   label:'📍 명소',    color:'#1565C0'},
-    {key:'shopping',label:'🛍 쇼핑',  color:'#1A7A4A'},
+    {key:'shopping',label:'🛍️ 쇼핑',  color:'#1A7A4A'},
     {key:'activity',label:'🎯 액티비티',color:'#6B21A8'},
   ]
 
@@ -973,10 +973,10 @@ export default function App() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:8}}>
                 <View style={{flexDirection:'row', gap:8, paddingRight:16}}>
                   {[
-                    {key:'food', label:'🍽 맛집'},
+                    {key:'food', label:'🍽️ 맛집'},
                     {key:'cafe', label:'☕ 카페'},
                     {key:'spot', label:'📍 명소'},
-                    {key:'shopping', label:'🛍 쇼핑'},
+                    {key:'shopping', label:'🛍️ 쇼핑'},
                     {key:'activity', label:'🎯 액티비티'},
                   ].map(c=>(
                     <TouchableOpacity key={c.key}
@@ -1085,7 +1085,7 @@ export default function App() {
               )}
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.postFilterRow}>
-              {[{key:'latest',label:L.latest},{key:'best',label:`🏆 ${L.best}`},{key:'free',label:L.free_post},{key:'food',label:L.food_post},{key:'spot',label:L.spot_post},{key:'cafe',label:L.cafe_post},{key:'activity',label:'🎯 액티비티'}].map(f=>(
+              {[{key:'latest',label:L.latest},{key:'best',label:`🏆 ${L.best}`},{key:'free',label:'자유'},{key:'food',label:'🍽️ 맛집'},{key:'spot',label:'📍 명소'},{key:'cafe',label:'☕ 카페'},{key:'activity',label:'🎯 액티비티'}].map(f=>(
                 <TouchableOpacity key={f.key} style={[s.postFilterBtn,postFilter===f.key&&s.postFilterBtnActive]} onPress={()=>setPostFilter(f.key)}>
                   <Text style={[s.postFilterText,postFilter===f.key&&s.postFilterTextActive]}>{f.label}</Text>
                 </TouchableOpacity>
@@ -1332,7 +1332,7 @@ export default function App() {
             </View>
             <ScrollView style={{padding:16}}>
               <View style={s.postCatRow}>
-                {[{k:'free',label:L.free_post},{k:'food',label:L.food_post},{k:'spot',label:L.spot_post},{k:'cafe',label:L.cafe_post},{k:'activity',label:'🎯 액티비티'}].map(c=>(
+                {[{k:'free',label:'자유'},{k:'food',label:'🍽️ 맛집'},{k:'spot',label:'📍 명소'},{k:'cafe',label:'☕ 카페'},{k:'activity',label:'🎯 액티비티'}].map(c=>(
                   <TouchableOpacity key={c.k} style={[s.postCatBtn,postCategory===c.k&&s.postCatBtnActive]} onPress={()=>setPostCategory(c.k)}>
                     <Text style={[s.postCatText,postCategory===c.k&&s.postCatTextActive]}>{c.label}</Text>
                   </TouchableOpacity>
@@ -1374,7 +1374,7 @@ export default function App() {
             </View>
             <ScrollView style={{padding:16}}>
               <View style={s.postCatRow}>
-                {[{k:'free',label:L.free_post},{k:'food',label:L.food_post},{k:'spot',label:L.spot_post},{k:'cafe',label:L.cafe_post},{k:'activity',label:'🎯 액티비티'}].map(c=>(
+                {[{k:'free',label:'자유'},{k:'food',label:'🍽️ 맛집'},{k:'spot',label:'📍 명소'},{k:'cafe',label:'☕ 카페'},{k:'activity',label:'🎯 액티비티'}].map(c=>(
                   <TouchableOpacity key={c.k} style={[s.postCatBtn,editCategory===c.k&&s.postCatBtnActive]} onPress={()=>setEditCategory(c.k)}>
                     <Text style={[s.postCatText,editCategory===c.k&&s.postCatTextActive]}>{c.label}</Text>
                   </TouchableOpacity>
