@@ -1332,7 +1332,7 @@ export default function App() {
             </View>
             <ScrollView style={{padding:16}}>
               <View style={s.postCatRow}>
-                {[{k:'food',label:L.food_post},{k:'spot',label:L.spot_post},{k:'cafe',label:L.cafe_post},{k:'free',label:L.free_post}].map(c=>(
+                {[{k:'free',label:L.free_post},{k:'food',label:L.food_post},{k:'spot',label:L.spot_post},{k:'cafe',label:L.cafe_post},{k:'activity',label:'🎯 액티비티'}].map(c=>(
                   <TouchableOpacity key={c.k} style={[s.postCatBtn,postCategory===c.k&&s.postCatBtnActive]} onPress={()=>setPostCategory(c.k)}>
                     <Text style={[s.postCatText,postCategory===c.k&&s.postCatTextActive]}>{c.label}</Text>
                   </TouchableOpacity>
@@ -1374,7 +1374,7 @@ export default function App() {
             </View>
             <ScrollView style={{padding:16}}>
               <View style={s.postCatRow}>
-                {[{k:'food',label:L.food_post},{k:'spot',label:L.spot_post},{k:'cafe',label:L.cafe_post},{k:'free',label:L.free_post}].map(c=>(
+                {[{k:'free',label:L.free_post},{k:'food',label:L.food_post},{k:'spot',label:L.spot_post},{k:'cafe',label:L.cafe_post},{k:'activity',label:'🎯 액티비티'}].map(c=>(
                   <TouchableOpacity key={c.k} style={[s.postCatBtn,editCategory===c.k&&s.postCatBtnActive]} onPress={()=>setEditCategory(c.k)}>
                     <Text style={[s.postCatText,editCategory===c.k&&s.postCatTextActive]}>{c.label}</Text>
                   </TouchableOpacity>
