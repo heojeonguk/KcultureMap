@@ -8,6 +8,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '@supabase/supabase-js'
+import Svg, { Circle, G, Rect, Text as SvgText } from 'react-native-svg'
 
 const supabase = createClient(
   'https://zmukgjwdrorgprxzqlka.supabase.co',
@@ -275,6 +276,7 @@ export default function App() {
   const [userBio, setUserBio] = useState<string>(user?.user_metadata?.bio || '')
   const [editingBio, setEditingBio] = useState(false)
   const [myPostsGrid, setMyPostsGrid] = useState<any[]>([])
+  const [savedPlacesData, setSavedPlacesData] = useState<any[]>([])
   const L = LANGS[lang] || LANGS['ko']
   
   const editDeleteTexts: any = {
@@ -321,10 +323,11 @@ export default function App() {
     if (user?.user_metadata?.avatar_url) {
       setProfileImage(user.user_metadata.avatar_url);
     }
+    loadSavedPlaces();
   }, [user])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
-  useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
+  useEffect(() => { if(tab==='profile') { loadMyData(); loadSavedPlacesWithDetails(); } }, [tab])
   useEffect(() => { loadBestPosts() }, [])
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -843,7 +846,42 @@ export default function App() {
     setSearchText('');
     exploreScrollRef.current?.scrollTo({y:0, animated:true});
   }
-  const toggleSave = (id:string) => setSaved(p=>p.includes(id)?p.filter(i=>i!==id):[...p,id])
+  const loadSavedPlaces = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('saved_places')
+      .select('place_id')
+      .eq('user_id', user.id);
+    if (data) setSaved(data.map((d:any) => d.place_id));
+  };
+
+  const loadSavedPlacesWithDetails = async () => {
+    if (!user) return;
+    const { data: savedData } = await supabase
+      .from('saved_places')
+      .select('place_id')
+      .eq('user_id', user.id);
+    if (!savedData || savedData.length === 0) return;
+    const placeIds = savedData.map((d:any) => d.place_id);
+    const { data: placesData } = await supabase
+      .from('places')
+      .select('id, name, lat, lng, city, category, emoji')
+      .in('id', placeIds);
+    if (placesData) setSavedPlacesData(placesData);
+  };
+
+  const toggleSave = async (placeId: string) => {
+    if (!user) { window.alert('로그인이 필요합니다.'); return; }
+    const isSaved = saved.includes(placeId);
+    if (isSaved) {
+      await supabase.from('saved_places').delete()
+        .eq('user_id', user.id).eq('place_id', placeId);
+      setSaved((prev:string[]) => prev.filter(id => id !== placeId));
+    } else {
+      await supabase.from('saved_places').insert({ user_id: user.id, place_id: placeId });
+      setSaved((prev:string[]) => [...prev, placeId]);
+    }
+  };
   const openGoogleMaps = (place:any) => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place.name+' '+place.address)}&travelmode=${routeTransport==='walk'?'walking':routeTransport==='taxi'?'driving':'transit'}`)
   const routeData = ROUTES_DATA[routeTransport]
   const regionLabel = selectedRegion.id==='all' ? `${selectedRegion.icon} 대한민국 전체` : `${selectedRegion.icon} ${selectedRegion.label}${selectedDistrict!=='전체'?' · '+selectedDistrict:''}`
@@ -1234,6 +1272,28 @@ export default function App() {
                   <Text style={s.statVal}>✉️</Text><Text style={s.statKey}>메세지</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+            <View style={{margin:16, backgroundColor:'#f5f5f5', borderRadius:16, padding:16}}>
+              <Text style={{fontWeight:'bold', fontSize:15, marginBottom:12}}>🗺️ 내 여행 지도</Text>
+              {savedPlacesData.length === 0 ? (
+                <Text style={{color:'#aaa', textAlign:'center', paddingVertical:40}}>저장한 장소가 없어요</Text>
+              ) : (
+                <Svg width="100%" height={300} viewBox="0 0 300 400">
+                  <Rect width="300" height="400" fill="#e8f4f8" rx="8"/>
+                  {savedPlacesData.filter((p:any) => p.lat && p.lng).map((p:any) => {
+                    const cx = ((p.lng - 124.5) / (131.9 - 124.5)) * 300;
+                    const cy = ((38.9 - p.lat) / (38.9 - 33.0)) * 400;
+                    return (
+                      <G key={p.id} onPress={() => setSelectedPlace(p)}>
+                        <Circle cx={cx} cy={cy} r={8} fill="#E8751A" opacity={0.8}/>
+                        <SvgText x={cx} y={cy + 4} fontSize="8" fill="white" textAnchor="middle">
+                          {p.emoji || '📍'}
+                        </SvgText>
+                      </G>
+                    );
+                  })}
+                </Svg>
+              )}
             </View>
             <View style={{padding:16}}>
               <Text style={s.sectionTitle}>✏️ {L.my_posts}</Text>
