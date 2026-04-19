@@ -8,7 +8,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '@supabase/supabase-js'
-import Svg, { Circle, G, Rect, Text as SvgText, Path } from 'react-native-svg'
+import { WebView } from 'react-native-webview'
 
 const supabase = createClient(
   'https://zmukgjwdrorgprxzqlka.supabase.co',
@@ -1273,44 +1273,80 @@ export default function App() {
                 </TouchableOpacity>
               </View>
             </View>
-            <View style={{margin:16, backgroundColor:'#f5f5f5', borderRadius:16, padding:16}}>
-              <Text style={{fontWeight:'bold', fontSize:15, marginBottom:12}}>🗺️ 내 여행 지도</Text>
-              {savedPlacesData.length === 0 ? (
-                <Text style={{color:'#aaa', textAlign:'center', paddingVertical:40}}>저장한 장소가 없어요</Text>
-              ) : (
-                <Svg width="100%" height={300} viewBox="0 0 300 400">
-                  <Rect width="300" height="400" fill="#e8f4f8" rx="8"/>
-                  <Path
-                    d="M140,20 L155,18 L165,22 L175,25 L185,30 L190,40 L195,50 L198,60
-                       L200,70 L205,80 L210,90 L215,100 L218,110 L220,120 L222,130
-                       L225,140 L228,150 L230,160 L228,170 L225,180 L222,190 L218,200
-                       L215,210 L210,220 L205,230 L200,240 L195,250 L190,260 L185,270
-                       L180,280 L175,290 L170,300 L165,310 L160,320 L155,330 L152,340
-                       L150,350 L148,355 L145,350 L142,340 L138,330 L133,320 L128,310
-                       L123,300 L118,290 L113,280 L108,270 L103,260 L98,250 L93,240
-                       L88,230 L83,220 L78,210 L75,200 L72,190 L70,180 L68,170
-                       L67,160 L68,150 L70,140 L73,130 L76,120 L80,110 L85,100
-                       L90,90 L95,80 L100,70 L105,60 L108,50 L110,40 L115,30
-                       L122,25 L130,22 L140,20 Z"
-                    fill="#d4e8c2"
-                    stroke="#a0c080"
-                    strokeWidth="1.5"
-                  />
-                  {savedPlacesData.filter((p:any) => p.lat && p.lng).map((p:any) => {
-                    const cx = ((p.lng - 124.5) / (131.9 - 124.5)) * 300;
-                    const cy = ((38.9 - p.lat) / (38.9 - 33.0)) * 400;
-                    return (
-                      <G key={p.id} onPress={() => setSelectedPlace(p)}>
-                        <Circle cx={cx} cy={cy} r={8} fill="#E8751A" opacity={0.8}/>
-                        <SvgText x={cx} y={cy + 4} fontSize="8" fill="white" textAnchor="middle">
-                          {p.emoji || '📍'}
-                        </SvgText>
-                      </G>
-                    );
-                  })}
-                </Svg>
-              )}
-            </View>
+            {(()=>{
+              const mapHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map').setView([36.5, 127.5], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+    var places = ${JSON.stringify(savedPlacesData.filter((p:any) => p.lat && p.lng))};
+    places.forEach(function(place) {
+      var marker = L.marker([place.lat, place.lng]).addTo(map);
+      marker.bindPopup(
+        '<b>' + (place.emoji || '📍') + ' ' + place.name + '</b><br>' +
+        place.city + ' · ' + place.category
+      );
+    });
+  </script>
+</body>
+</html>`;
+              return (
+                <View style={{margin:16, backgroundColor:'#f5f5f5', borderRadius:16, overflow:'hidden'}}>
+                  <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:16}}>
+                    <Text style={{fontWeight:'bold', fontSize:15}}>🗺️ 내 여행 지도</Text>
+                    <Text style={{color:'#E8751A', fontWeight:'bold', fontSize:13}}>
+                      📍 {savedPlacesData.filter((p:any) => p.lat && p.lng).length}곳 저장됨
+                    </Text>
+                  </View>
+                  {savedPlacesData.length === 0 ? (
+                    <View style={{height:200, alignItems:'center', justifyContent:'center'}}>
+                      <Text style={{color:'#aaa'}}>저장한 장소가 없어요</Text>
+                      <Text style={{color:'#aaa', fontSize:12, marginTop:4}}>탐색 탭에서 하트를 눌러보세요</Text>
+                    </View>
+                  ) : (
+                    <WebView
+                      source={{ html: mapHtml }}
+                      style={{height:300}}
+                      scrollEnabled={false}
+                      javaScriptEnabled={true}
+                    />
+                  )}
+                  <View style={{padding:16, borderTopWidth:1, borderTopColor:'#eee'}}>
+                    <Text style={{fontWeight:'bold', fontSize:13, marginBottom:8}}>저장한 장소</Text>
+                    {savedPlacesData.slice(0,3).map((p:any) => (
+                      <TouchableOpacity key={p.id} onPress={() => setSelectedPlace(p)}
+                        style={{flexDirection:'row', alignItems:'center', gap:8, paddingVertical:6}}>
+                        <Text style={{fontSize:18}}>{p.emoji || '📍'}</Text>
+                        <View style={{flex:1}}>
+                          <Text style={{fontWeight:'bold', fontSize:13}}>{p.name}</Text>
+                          <Text style={{color:'#888', fontSize:11}}>{p.city}</Text>
+                        </View>
+                        <Text style={{color:'#E8751A', fontSize:12}}>›</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {savedPlacesData.length > 3 && (
+                      <Text style={{color:'#E8751A', textAlign:'center', marginTop:8, fontSize:13}}>
+                        +{savedPlacesData.length - 3}곳 더 보기
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })()}
             <View style={{padding:16}}>
               <Text style={s.sectionTitle}>✏️ {L.my_posts}</Text>
               {myPosts.filter((p:any)=>p.photo_url).length>0&&(
