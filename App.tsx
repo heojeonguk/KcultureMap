@@ -2185,7 +2185,23 @@ export default function App() {
                       <Text style={{color:'#888', fontSize:15}}>새로운 알림이 없습니다</Text>
                     </View>
                   ) : notifications.map((n: any) => (
-                    <View key={n.id} style={{flexDirection:'row', alignItems:'center', padding:14, borderBottomWidth:1, borderBottomColor:'#f0f0f0', backgroundColor: n.is_read ? '#fff' : '#FFF5F0'}}>
+                    <TouchableOpacity key={n.id} style={{flexDirection:'row', alignItems:'center', padding:14, borderBottomWidth:1, borderBottomColor:'#f0f0f0', backgroundColor: n.is_read ? '#fff' : '#FFF5F0'}}
+                      onPress={async () => {
+                        setShowNotifications(false);
+                        if (n.post_id) {
+                          let post = posts.find((p: any) => String(p.id) === String(n.post_id));
+                          if (!post) {
+                            const { data } = await supabase
+                              .from('posts')
+                              .select('*, post_comments(count)')
+                              .eq('id', n.post_id)
+                              .single();
+                            if (data) post = data;
+                          }
+                          if (post) setSelectedPost(post);
+                        }
+                      }}
+                    >
                       {n.from_avatar_url ? (
                         <Image source={{uri: n.from_avatar_url}} style={{width:40, height:40, borderRadius:20, marginRight:12}} />
                       ) : (
@@ -2197,7 +2213,7 @@ export default function App() {
                         <Text style={{fontSize:14, color:'#222'}}>{n.message}</Text>
                         <Text style={{fontSize:11, color:'#aaa', marginTop:2}}>{new Date(n.created_at).toLocaleString('ko-KR')}</Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
               </TouchableOpacity>
