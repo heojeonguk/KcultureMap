@@ -1317,6 +1317,12 @@ export default function App() {
                       <Text style={{color:'#aaa'}}>저장한 장소가 없어요</Text>
                       <Text style={{color:'#aaa', fontSize:12, marginTop:4}}>탐색 탭에서 하트를 눌러보세요</Text>
                     </View>
+                  ) : Platform.OS === 'web' ? (
+                    <iframe
+                      srcDoc={mapHtml}
+                      style={{width:'100%', height:300, border:'none'} as any}
+                      title="travel-map"
+                    />
                   ) : (
                     <WebView
                       source={{ html: mapHtml }}
