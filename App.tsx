@@ -192,7 +192,7 @@ export default function App() {
 
   const exploreScrollRef = useRef<ScrollView>(null)
   const [lang, setLang] = useState('ko')
-  const [tab, setTab] = useState('explore')
+  const [tab, setTab] = useState('community')
   const [places, setPlaces] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedRegion, setSelectedRegion] = useState(REGION_DATA[0])
@@ -1485,7 +1485,7 @@ export default function App() {
 
         {/* 하단 탭바 */}
         <View style={[s.tabBar, {paddingBottom: Platform.OS === 'android' ? 16 : 0}]}>
-          {[{key:'explore',icon:'🗺',label:L.nav_explore},{key:'ai',icon:'✨',label:L.nav_ai},{key:'community',icon:'💬',label:L.nav_community},{key:'profile',icon:'👤',label:L.nav_me}].map(t=>(
+          {[{key:'community',icon:'💬',label:'피드'},{key:'explore',icon:'🗺',label:L.nav_explore},{key:'ai',icon:'✨',label:L.nav_ai},{key:'profile',icon:'👤',label:L.nav_me}].map(t=>(
             <TouchableOpacity key={t.key} style={s.tabBtn} onPress={()=>{setTab(t.key);if(t.key==='ai')loadAiPlaces('food')}}>
               <Text style={[s.tabIcon,tab===t.key&&s.tabIconActive]}>{t.icon}</Text>
               <Text style={[s.tabLabel,tab===t.key&&s.tabLabelActive]}>{t.label}</Text>
