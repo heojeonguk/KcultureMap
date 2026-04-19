@@ -28,7 +28,7 @@ const LANGS: any = {
     community_title:'여행자 커뮤니티', community_sub:'로컬 맛집·숨은 명소 공유',
     write_post:'글 쓰기', best:'베스트', latest:'최신',
     food_post:'맛집', spot_post:'명소', cafe_post:'카페', free_post:'자유',
-    likes:'추천', comments:'댓글', reply:'답글', my_posts:'내 작성글',
+    likes:'좋아요', comments:'댓글', reply:'답글', my_posts:'내 작성글',
     no_posts:'아직 작성한 글이 없어요',
     post_title:'제목', post_content:'내용을 자유롭게 작성해주세요...',
     post_city:'도시 (선택)', post_submit:'게시하기',
@@ -277,6 +277,9 @@ export default function App() {
   const [editingBio, setEditingBio] = useState(false)
   const [myPostsGrid, setMyPostsGrid] = useState<any[]>([])
   const [savedPlacesData, setSavedPlacesData] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifications, setShowNotifications] = useState(false)
   const L = LANGS[lang] || LANGS['ko']
   
   const editDeleteTexts: any = {
@@ -324,6 +327,7 @@ export default function App() {
       setProfileImage(user.user_metadata.avatar_url);
     }
     loadSavedPlaces();
+    fetchNotifications();
   }, [user])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
@@ -518,6 +522,30 @@ export default function App() {
       }
     };
     input.click();
+  };
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (data) {
+      setNotifications(data);
+      setUnreadCount(data.filter((n:any) => !n.is_read).length);
+    }
+  };
+
+  const markAllRead = async () => {
+    if (!user) return;
+    await supabase.from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    setUnreadCount(0);
+    setNotifications((prev:any[]) => prev.map(n => ({ ...n, is_read: true })));
   };
 
   const handleSaveBio = async () => {
@@ -770,10 +798,21 @@ export default function App() {
 
   async function submitComment() {
     if(!commentText.trim()) return
+    const newComment = commentText.trim()
     await supabase.from('post_comments').insert({
-      post_id:selectedPost.id, user_name: user?.user_metadata?.nickname||'익명', content:commentText.trim(),
+      post_id:selectedPost.id, user_name: user?.user_metadata?.nickname||'익명', content:newComment,
       parent_id: replyTo?.id || null,
     })
+    if (selectedPost && selectedPost.user_id && selectedPost.user_id !== user?.id) {
+      await supabase.from('notifications').insert({
+        user_id: selectedPost.user_id,
+        type: 'comment',
+        message: `${user?.user_metadata?.nickname || '누군가'}님이 댓글을 달았습니다: "${newComment.slice(0, 30)}${newComment.length > 30 ? '...' : ''}"`,
+        post_id: selectedPost.id,
+        from_user_name: user?.user_metadata?.nickname || '익명',
+        from_avatar_url: user?.user_metadata?.avatar_url || null,
+      });
+    }
     setCommentText(''); setReplyTo(null)
     await loadComments(selectedPost.id)
   }
@@ -795,7 +834,7 @@ export default function App() {
       .eq('user_identifier', identifier)
       .single()
     if(existing) {
-      window.alert('이미 추천한 게시글입니다!')
+      window.alert('이미 좋아요한 게시글입니다!')
       return
     }
     await supabase.from('post_likes').insert({
@@ -803,6 +842,16 @@ export default function App() {
       user_identifier: identifier
     })
     await supabase.from('posts').update({likes: post.likes + 1}).eq('id', post.id)
+    if (post.user_id && post.user_id !== user?.id) {
+      await supabase.from('notifications').insert({
+        user_id: post.user_id,
+        type: 'like',
+        message: `${user?.user_metadata?.nickname || '누군가'}님이 회원님의 게시글을 좋아합니다.`,
+        post_id: post.id,
+        from_user_name: user?.user_metadata?.nickname || '익명',
+        from_avatar_url: user?.user_metadata?.avatar_url || null,
+      });
+    }
     await loadPosts()
   }
 
@@ -1208,6 +1257,16 @@ export default function App() {
               </View>
             ) : (
             <>
+            <View style={{flexDirection:'row', justifyContent:'flex-end', paddingHorizontal:16, paddingTop:12, backgroundColor:'#0D1B2A'}}>
+              <TouchableOpacity onPress={() => { setShowNotifications(true); markAllRead(); }} style={{position:'relative', padding:6}}>
+                <Text style={{fontSize:24}}>🔔</Text>
+                {unreadCount > 0 && (
+                  <View style={{position:'absolute', top:2, right:2, backgroundColor:'#C8102E', borderRadius:8, minWidth:16, height:16, alignItems:'center', justifyContent:'center'}}>
+                    <Text style={{color:'#fff', fontSize:10, fontWeight:'bold'}}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
             <View style={s.profileHeader}>
               <TouchableOpacity onPress={handleProfileImageUpload} style={{alignItems:'center'}}>
                 {profileImage ? (
@@ -2102,6 +2161,45 @@ export default function App() {
                 }}>
                 <Text style={{fontSize:18}}>✉️</Text>
                 <Text style={{fontSize:15}}>메시지 보내기</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {showNotifications && (
+        <Modal transparent animationType="slide" visible={showNotifications} onRequestClose={() => setShowNotifications(false)}>
+          <TouchableOpacity style={{flex:1, backgroundColor:'rgba(0,0,0,0.5)'}} activeOpacity={1} onPress={() => setShowNotifications(false)}>
+            <View style={{position:'absolute', bottom:0, left:0, right:0, backgroundColor:'#fff', borderTopLeftRadius:20, borderTopRightRadius:20, maxHeight:'70%'}}>
+              <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()}>
+                <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:16, borderBottomWidth:1, borderBottomColor:'#eee'}}>
+                  <Text style={{fontSize:18, fontWeight:'bold'}}>🔔 알림</Text>
+                  <TouchableOpacity onPress={() => setShowNotifications(false)}>
+                    <Text style={{fontSize:22, color:'#888'}}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={{maxHeight:500}}>
+                  {notifications.length === 0 ? (
+                    <View style={{padding:40, alignItems:'center'}}>
+                      <Text style={{fontSize:36, marginBottom:12}}>🔕</Text>
+                      <Text style={{color:'#888', fontSize:15}}>새로운 알림이 없습니다</Text>
+                    </View>
+                  ) : notifications.map((n: any) => (
+                    <View key={n.id} style={{flexDirection:'row', alignItems:'center', padding:14, borderBottomWidth:1, borderBottomColor:'#f0f0f0', backgroundColor: n.is_read ? '#fff' : '#FFF5F0'}}>
+                      {n.from_avatar_url ? (
+                        <Image source={{uri: n.from_avatar_url}} style={{width:40, height:40, borderRadius:20, marginRight:12}} />
+                      ) : (
+                        <View style={{width:40, height:40, borderRadius:20, backgroundColor:'#E8751A', alignItems:'center', justifyContent:'center', marginRight:12}}>
+                          <Text style={{fontSize:20}}>{n.type === 'like' ? '❤️' : '💬'}</Text>
+                        </View>
+                      )}
+                      <View style={{flex:1}}>
+                        <Text style={{fontSize:14, color:'#222'}}>{n.message}</Text>
+                        <Text style={{fontSize:11, color:'#aaa', marginTop:2}}>{new Date(n.created_at).toLocaleString('ko-KR')}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
