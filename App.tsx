@@ -267,6 +267,9 @@ export default function App() {
   const [editCategory, setEditCategory] = useState('free')
   const [editPhoto, setEditPhoto] = useState<string | null>(null)
   const [editPhotoUploading, setEditPhotoUploading] = useState(false)
+  const [userProfileModal, setUserProfileModal] = useState<{visible: boolean, userId: string, nickname: string}>({visible: false, userId: '', nickname: ''})
+  const [followStats, setFollowStats] = useState<{followers: number, following: number}>({followers: 0, following: 0})
+  const [isFollowing, setIsFollowing] = useState(false)
   const L = LANGS[lang] || LANGS['ko']
   
   const editDeleteTexts: any = {
@@ -480,6 +483,45 @@ export default function App() {
     setAiPlaces(data||[])
     setAiLoading(false)
   }
+
+  const fetchFollowStats = async (userId: string) => {
+    const [{ count: followers }, { count: following }] = await Promise.all([
+      supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
+      supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
+    ]);
+    setFollowStats({ followers: followers || 0, following: following || 0 });
+  };
+
+  const checkIsFollowing = async (targetUserId: string) => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_follows')
+      .select('id')
+      .eq('follower_id', user.id)
+      .eq('following_id', targetUserId)
+      .single();
+    setIsFollowing(!!data);
+  };
+
+  const handleFollowToggle = async (targetUserId: string) => {
+    if (!user) { window.alert('로그인이 필요합니다.'); return; }
+    if (isFollowing) {
+      await supabase.from('user_follows').delete()
+        .eq('follower_id', user.id).eq('following_id', targetUserId);
+      setIsFollowing(false);
+      setFollowStats(prev => ({ ...prev, followers: prev.followers - 1 }));
+    } else {
+      await supabase.from('user_follows').insert({ follower_id: user.id, following_id: targetUserId });
+      setIsFollowing(true);
+      setFollowStats(prev => ({ ...prev, followers: prev.followers + 1 }));
+    }
+  };
+
+  const openUserProfile = async (userId: string, nickname: string) => {
+    if (user && userId === user.id) return;
+    setUserProfileModal({ visible: true, userId, nickname });
+    await Promise.all([fetchFollowStats(userId), checkIsFollowing(userId)]);
+  };
 
   async function loadBestPosts() {
     setBestLoading(true)
@@ -1031,7 +1073,9 @@ export default function App() {
                       <View style={[s.postAvatar,{backgroundColor:getAvatarColor(post.user_name)}]}><Text style={s.postAvatarText}>{post.user_name[0]}</Text></View>
                       <View style={{flex:1}}>
                         <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
-                          <Text style={s.postUser}>{post.user_name}</Text><Text style={s.postNation}>{post.nation}</Text>
+                          <TouchableOpacity onPress={() => post.user_id && openUserProfile(post.user_id, post.user_name)}>
+                            <Text style={{fontWeight:'bold', color:'#E8751A'}}>{post.user_name}</Text>
+                          </TouchableOpacity><Text style={s.postNation}>{post.nation}</Text>
                           {post.city&&<View style={s.postCityTag}><Text style={s.postCityTagText}>📍{post.city}</Text></View>}
                         </View>
                         <Text style={s.postTime}>{timeAgo(post.created_at)}</Text>
@@ -1080,6 +1124,16 @@ export default function App() {
               <View style={s.profileAvatar}><Text style={{fontSize:30}}>✈️</Text></View>
               <Text style={s.profileName}>{user?.user_metadata?.nickname||user?.email}</Text>
               <Text style={s.profileSub}>K컬처MAP 여행자</Text>
+              <View style={{flexDirection:'row', gap:24, marginTop:8}}>
+                <TouchableOpacity onPress={() => user && fetchFollowStats(user.id)}>
+                  <Text style={{textAlign:'center', fontWeight:'bold', fontSize:16}}>{followStats.followers}</Text>
+                  <Text style={{textAlign:'center', color:'#888', fontSize:12}}>팔로워</Text>
+                </TouchableOpacity>
+                <TouchableOpacity>
+                  <Text style={{textAlign:'center', fontWeight:'bold', fontSize:16}}>{followStats.following}</Text>
+                  <Text style={{textAlign:'center', color:'#888', fontSize:12}}>팔로잉</Text>
+                </TouchableOpacity>
+              </View>
               <View style={s.statRow}>
                 <View style={s.statCell}><Text style={s.statVal}>{myReviewCount}</Text><Text style={s.statKey}>{L.review}</Text></View>
                 <View style={s.statCell}><Text style={s.statVal}>{saved.length}</Text><Text style={s.statKey}>{L.saving}</Text></View>
@@ -1749,6 +1803,40 @@ export default function App() {
         </Modal>
 
       </View>
+
+      {userProfileModal.visible && (
+        <Modal transparent animationType="slide" visible={userProfileModal.visible}>
+          <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.5)', justifyContent:'flex-end'}}>
+            <View style={{backgroundColor:'#fff', borderTopLeftRadius:20, borderTopRightRadius:20, padding:24}}>
+              <TouchableOpacity onPress={() => setUserProfileModal({visible:false, userId:'', nickname:''})}
+                style={{alignSelf:'flex-end', marginBottom:8}}>
+                <Text style={{fontSize:18}}>✕</Text>
+              </TouchableOpacity>
+              <Text style={{fontSize:20, fontWeight:'bold', textAlign:'center', marginBottom:16}}>
+                {userProfileModal.nickname}
+              </Text>
+              <View style={{flexDirection:'row', justifyContent:'center', gap:32, marginBottom:24}}>
+                <View>
+                  <Text style={{textAlign:'center', fontWeight:'bold', fontSize:18}}>{followStats.followers}</Text>
+                  <Text style={{textAlign:'center', color:'#888'}}>팔로워</Text>
+                </View>
+                <View>
+                  <Text style={{textAlign:'center', fontWeight:'bold', fontSize:18}}>{followStats.following}</Text>
+                  <Text style={{textAlign:'center', color:'#888'}}>팔로잉</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => handleFollowToggle(userProfileModal.userId)}
+                style={{backgroundColor: isFollowing ? '#ddd' : '#E8751A', padding:14, borderRadius:10, alignItems:'center'}}>
+                <Text style={{color: isFollowing ? '#333' : '#fff', fontWeight:'bold', fontSize:16}}>
+                  {isFollowing ? '언팔로우' : '팔로우'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
     </SafeAreaView>
     </SafeAreaProvider>
   )
