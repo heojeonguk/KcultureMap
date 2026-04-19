@@ -269,6 +269,7 @@ export default function App() {
   const [editPhotoUploading, setEditPhotoUploading] = useState(false)
   const [userProfileModal, setUserProfileModal] = useState<{visible: boolean, userId: string, nickname: string}>({visible: false, userId: '', nickname: ''})
   const [nicknameMenu, setNicknameMenu] = useState<{visible:boolean, userId:string, nickname:string, x:number, y:number}>({visible:false, userId:'', nickname:'', x:0, y:0})
+  const [profileImage, setProfileImage] = useState<string | null>(null)
   const [followStats, setFollowStats] = useState<{followers: number, following: number}>({followers: 0, following: 0})
   const [isFollowing, setIsFollowing] = useState(false)
   const L = LANGS[lang] || LANGS['ko']
@@ -313,6 +314,11 @@ export default function App() {
       }
     })
   }, [])
+  useEffect(() => {
+    if (user?.user_metadata?.avatar_url) {
+      setProfileImage(user.user_metadata.avatar_url);
+    }
+  }, [user])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
   useEffect(() => { if(tab==='profile') loadMyData() }, [tab])
@@ -484,6 +490,26 @@ export default function App() {
     setAiPlaces(data||[])
     setAiLoading(false)
   }
+
+  const handleProfileImageUpload = async () => {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file || !user) return;
+      const ext = file.name.split('.').pop();
+      const filePath = `profiles/${user.id}.${ext}`;
+      const { error } = await supabase.storage.from('community-photos').upload(filePath, file, { upsert: true });
+      if (!error) {
+        const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+        setProfileImage(data.publicUrl);
+        await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
+      }
+    };
+    input.click();
+  };
 
   const fetchFollowStats = async (userId: string) => {
     const [{ count: followers }, { count: following }] = await Promise.all([
@@ -1127,7 +1153,16 @@ export default function App() {
             ) : (
             <>
             <View style={s.profileHeader}>
-              <View style={s.profileAvatar}><Text style={{fontSize:30}}>✈️</Text></View>
+              <TouchableOpacity onPress={handleProfileImageUpload} style={{alignItems:'center'}}>
+                {profileImage ? (
+                  <Image source={{uri: profileImage}} style={{width:80, height:80, borderRadius:40, borderWidth:2, borderColor:'#E8751A'}} />
+                ) : (
+                  <View style={{width:80, height:80, borderRadius:40, backgroundColor:'#E8751A', alignItems:'center', justifyContent:'center', borderWidth:2, borderColor:'#fff'}}>
+                    <Text style={{fontSize:36}}>✈️</Text>
+                  </View>
+                )}
+                <Text style={{color:'#aaa', fontSize:11, marginTop:4}}>사진 변경</Text>
+              </TouchableOpacity>
               <Text style={s.profileName}>{user?.user_metadata?.nickname||user?.email}</Text>
               <Text style={s.profileSub}>K컬처MAP 여행자</Text>
               <View style={{flexDirection:'row', gap:24, marginTop:8}}>
@@ -1143,8 +1178,10 @@ export default function App() {
               <View style={s.statRow}>
                 <View style={s.statCell}><Text style={s.statVal}>{myReviewCount}</Text><Text style={s.statKey}>{L.review}</Text></View>
                 <View style={s.statCell}><Text style={s.statVal}>{saved.length}</Text><Text style={s.statKey}>{L.saving}</Text></View>
-                <View style={s.statCell}><Text style={s.statVal}>{places.length}</Text><Text style={s.statKey}>{L.nav_explore}</Text></View>
                 <View style={s.statCell}><Text style={s.statVal}>{myPosts.length}</Text><Text style={s.statKey}>{L.my_posts}</Text></View>
+                <TouchableOpacity style={s.statCell} onPress={() => window.alert('메시지 기능은 준비 중입니다.')}>
+                  <Text style={s.statVal}>✉️</Text><Text style={s.statKey}>메세지</Text>
+                </TouchableOpacity>
               </View>
             </View>
             <View style={{padding:16}}>
@@ -1387,7 +1424,7 @@ export default function App() {
                     <View>
                       <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
                         <TouchableOpacity
-                          onPress={() => selectedPost.user_id && openUserProfile(selectedPost.user_id, selectedPost.user_name)}
+                          onPress={() => selectedPost.user_id && selectedPost.user_id !== user?.id && setNicknameMenu({visible:true, userId:selectedPost.user_id, nickname:selectedPost.user_name, x:0, y:0})}
                           style={{cursor: 'pointer'} as any}>
                           <Text style={{fontWeight:'bold', color:'#E8751A'}}>{selectedPost.user_name}</Text>
                         </TouchableOpacity><Text style={s.postNation}>{selectedPost.nation}</Text>
@@ -1864,6 +1901,15 @@ export default function App() {
                 }}>
                 <Text style={{fontSize:18}}>👤</Text>
                 <Text style={{fontSize:15}}>프로필 보기 / 팔로우</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{padding:16, borderBottomWidth:1, borderBottomColor:'#eee', flexDirection:'row', alignItems:'center', gap:12}}
+                onPress={() => {
+                  setNicknameMenu({visible:false, userId:'', nickname:'', x:0, y:0});
+                  window.alert('게시글 보기 기능은 준비 중입니다.');
+                }}>
+                <Text style={{fontSize:18}}>📝</Text>
+                <Text style={{fontSize:15}}>게시글 보기</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{padding:16, flexDirection:'row', alignItems:'center', gap:12}}
