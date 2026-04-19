@@ -1073,7 +1073,9 @@ export default function App() {
                       <View style={[s.postAvatar,{backgroundColor:getAvatarColor(post.user_name)}]}><Text style={s.postAvatarText}>{post.user_name[0]}</Text></View>
                       <View style={{flex:1}}>
                         <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
-                          <TouchableOpacity onPress={() => post.user_id && openUserProfile(post.user_id, post.user_name)}>
+                          <TouchableOpacity
+                            onPress={() => post.user_id && openUserProfile(post.user_id, post.user_name)}
+                            style={{cursor: 'pointer'} as any}>
                             <Text style={{fontWeight:'bold', color:'#E8751A'}}>{post.user_name}</Text>
                           </TouchableOpacity><Text style={s.postNation}>{post.nation}</Text>
                           {post.city&&<View style={s.postCityTag}><Text style={s.postCityTagText}>📍{post.city}</Text></View>}
@@ -1126,12 +1128,12 @@ export default function App() {
               <Text style={s.profileSub}>K컬처MAP 여행자</Text>
               <View style={{flexDirection:'row', gap:24, marginTop:8}}>
                 <TouchableOpacity onPress={() => user && fetchFollowStats(user.id)}>
-                  <Text style={{textAlign:'center', fontWeight:'bold', fontSize:16}}>{followStats.followers}</Text>
-                  <Text style={{textAlign:'center', color:'#888', fontSize:12}}>팔로워</Text>
+                  <Text style={{textAlign:'center', fontWeight:'bold', fontSize:16, color:'#fff'}}>{followStats.followers}</Text>
+                  <Text style={{textAlign:'center', color:'#fff', fontSize:12}}>팔로워</Text>
                 </TouchableOpacity>
                 <TouchableOpacity>
-                  <Text style={{textAlign:'center', fontWeight:'bold', fontSize:16}}>{followStats.following}</Text>
-                  <Text style={{textAlign:'center', color:'#888', fontSize:12}}>팔로잉</Text>
+                  <Text style={{textAlign:'center', fontWeight:'bold', fontSize:16, color:'#fff'}}>{followStats.following}</Text>
+                  <Text style={{textAlign:'center', color:'#fff', fontSize:12}}>팔로잉</Text>
                 </TouchableOpacity>
               </View>
               <View style={s.statRow}>
@@ -1380,7 +1382,11 @@ export default function App() {
                     <View style={[s.postAvatar,{backgroundColor:getAvatarColor(selectedPost.user_name)}]}><Text style={s.postAvatarText}>{selectedPost.user_name[0]}</Text></View>
                     <View>
                       <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
-                        <Text style={s.postUser}>{selectedPost.user_name}</Text><Text style={s.postNation}>{selectedPost.nation}</Text>
+                        <TouchableOpacity
+                          onPress={() => selectedPost.user_id && openUserProfile(selectedPost.user_id, selectedPost.user_name)}
+                          style={{cursor: 'pointer'} as any}>
+                          <Text style={{fontWeight:'bold', color:'#E8751A'}}>{selectedPost.user_name}</Text>
+                        </TouchableOpacity><Text style={s.postNation}>{selectedPost.nation}</Text>
                         {selectedPost.city&&<View style={s.postCityTag}><Text style={s.postCityTagText}>📍{selectedPost.city}</Text></View>}
                       </View>
                       <Text style={s.postTime}>{timeAgo(selectedPost.created_at)}</Text>
