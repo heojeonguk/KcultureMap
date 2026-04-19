@@ -1247,7 +1247,7 @@ export default function App() {
                   ))}
                 </View>
               )}
-              {myPosts.length===0?<Text style={s.emptyText}>{L.no_posts}</Text>:myPosts.map((post:any)=>(
+              {myPosts.length===0?<Text style={s.emptyText}>{L.no_posts}</Text>:myPosts.filter((post:any)=>!post.photo_url).map((post:any)=>(
                 <View key={post.id} style={s.myPostCard}>
                   <TouchableOpacity onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
                     {post.photo_url&&<Image source={{uri:post.photo_url}} style={s.myPostImg} resizeMode="cover"/>}
@@ -1511,7 +1511,7 @@ export default function App() {
                     <TouchableOpacity style={s.translateBtn} onPress={()=>translateText(`detail_${selectedPost.id}`,selectedPost.title+'\n'+selectedPost.content)}>
                       <Text style={s.translateBtnText}>{translating[`detail_${selectedPost.id}`]?L.translating:`🌐 ${L.translate}`}</Text>
                     </TouchableOpacity>
-                    {selectedPost.user_name==='나'&&(
+                    {(user?.id && user.id === selectedPost.user_id)&&(
                       <>
                         <TouchableOpacity 
                           style={[s.translateBtn,{backgroundColor:'#f0f4ff'}]} 
