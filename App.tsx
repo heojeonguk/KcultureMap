@@ -500,7 +500,7 @@ export default function App() {
       const file = e.target.files[0];
       if (!file || !user) return;
       const ext = file.name.split('.').pop();
-      const filePath = `profiles/${user.id}.${ext}`;
+      const filePath = `profiles/${user.id}`;
       const { error } = await supabase.storage.from('community-photos').upload(filePath, file, { upsert: true });
       if (!error) {
         const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
