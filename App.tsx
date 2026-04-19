@@ -506,6 +506,7 @@ export default function App() {
         const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
         setProfileImage(data.publicUrl);
         await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
+        await supabase.from('posts').update({ avatar_url: data.publicUrl }).eq('user_id', user.id);
       }
     };
     input.click();
@@ -732,6 +733,7 @@ export default function App() {
       content:postContent.trim(), city:postCity.trim()||null,
       category:postCategory, likes:0,
       photo_url: postPhoto || null,
+      avatar_url: user?.user_metadata?.avatar_url || null,
     })
     if(!error) {
       setPostTitle(''); setPostContent(''); setPostCity(''); setPostCategory('free'); setPostPhoto(null)
@@ -1097,7 +1099,11 @@ export default function App() {
                   <TouchableOpacity key={post.id} style={s.postCard} onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
                     {post.likes>=30&&<View style={s.bestBadge}><Text style={s.bestBadgeText}>🏆 BEST</Text></View>}
                     <View style={s.postHeader}>
-                      <View style={[s.postAvatar,{backgroundColor:getAvatarColor(post.user_name)}]}><Text style={s.postAvatarText}>{post.user_name[0]}</Text></View>
+                      {post.avatar_url ? (
+                        <Image source={{uri: post.avatar_url}} style={{width:34, height:34, borderRadius:17}} />
+                      ) : (
+                        <View style={[s.postAvatar,{backgroundColor:getAvatarColor(post.user_name)}]}><Text style={s.postAvatarText}>{post.user_name[0]}</Text></View>
+                      )}
                       <View style={{flex:1}}>
                         <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
                           <TouchableOpacity
@@ -1420,7 +1426,11 @@ export default function App() {
               <ScrollView style={{flex:1}}>
                 <View style={s.postDetailCard}>
                   <View style={s.postHeader}>
-                    <View style={[s.postAvatar,{backgroundColor:getAvatarColor(selectedPost.user_name)}]}><Text style={s.postAvatarText}>{selectedPost.user_name[0]}</Text></View>
+                    {selectedPost.avatar_url ? (
+                      <Image source={{uri: selectedPost.avatar_url}} style={{width:34, height:34, borderRadius:17}} />
+                    ) : (
+                      <View style={[s.postAvatar,{backgroundColor:getAvatarColor(selectedPost.user_name)}]}><Text style={s.postAvatarText}>{selectedPost.user_name[0]}</Text></View>
+                    )}
                     <View>
                       <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
                         <TouchableOpacity
