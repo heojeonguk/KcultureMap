@@ -280,6 +280,13 @@ export default function App() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [showAdminPage, setShowAdminPage] = useState(false)
+  const [placeReports, setPlaceReports] = useState<any[]>([])
+  const [editingReport, setEditingReport] = useState<any>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectingReport, setRejectingReport] = useState<any>(null)
   const [showPlaceReport, setShowPlaceReport] = useState(false)
   const [reportName, setReportName] = useState('')
   const [reportCategory, setReportCategory] = useState('맛집')
@@ -336,6 +343,7 @@ export default function App() {
     }
     loadSavedPlaces();
     fetchNotifications();
+    checkIsAdmin();
   }, [user])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
@@ -579,6 +587,89 @@ export default function App() {
     } else {
       window.alert('제보 중 오류가 발생했습니다.');
     }
+  };
+
+  const checkIsAdmin = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .single();
+    setIsAdmin(!!data);
+  };
+
+  const fetchPlaceReports = async () => {
+    const { data } = await supabase
+      .from('place_reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setPlaceReports(data);
+  };
+
+  const handleApproveReport = async (report: any) => {
+    if (!window.confirm(`"${report.name}" 장소를 등록하시겠습니까?`)) return;
+
+    const { error } = await supabase.from('places').insert({
+      name: report.name,
+      name_en: report.name,
+      city: report.city,
+      district: report.city,
+      category: report.category === '맛집' ? 'food' :
+                report.category === '카페' ? 'cafe' :
+                report.category === '명소' ? 'spot' :
+                report.category === '쇼핑' ? 'shopping' : 'activity',
+      address: report.address,
+      rating: 0,
+      emoji: report.category === '맛집' ? '🍽️' :
+             report.category === '카페' ? '☕' :
+             report.category === '명소' ? '📍' :
+             report.category === '쇼핑' ? '🛍️' : '🎯',
+      featured: false,
+      is_open: true,
+    });
+
+    if (!error) {
+      await supabase.from('place_reports')
+        .update({ status: 'approved' })
+        .eq('id', report.id);
+
+      if (report.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: report.user_id,
+          type: 'comment',
+          message: `📌 "${report.name}" 장소가 K컬처MAP에 등록됐습니다! 감사합니다 🎉`,
+          from_user_name: 'K컬처MAP 관리자',
+          from_avatar_url: null,
+        });
+      }
+      fetchPlaceReports();
+      window.alert('장소가 등록됐습니다!');
+    }
+  };
+
+  const handleRejectReport = async () => {
+    if (!rejectReason.trim()) { window.alert('반려 사유를 입력해주세요.'); return; }
+
+    await supabase.from('place_reports')
+      .update({ status: 'rejected' })
+      .eq('id', rejectingReport.id);
+
+    if (rejectingReport.user_id) {
+      await supabase.from('notifications').insert({
+        user_id: rejectingReport.user_id,
+        type: 'comment',
+        message: `📌 "${rejectingReport.name}" 장소 제보가 반려됐습니다. 사유: ${rejectReason}`,
+        from_user_name: 'K컬처MAP 관리자',
+        from_avatar_url: null,
+      });
+    }
+
+    setShowRejectModal(false);
+    setRejectReason('');
+    setRejectingReport(null);
+    fetchPlaceReports();
+    window.alert('반려 처리됐습니다.');
   };
 
   const fetchNotifications = async () => {
@@ -1597,6 +1688,14 @@ export default function App() {
                 <Text style={{fontSize:11, color:'#bbb', marginTop:4}}>© 2025 KcultureMAP. All rights reserved.</Text>
               </View>
             </View>
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={() => { setShowAdminPage(true); fetchPlaceReports(); }}
+                style={{backgroundColor:'#1a1a2e', padding:16, borderRadius:12, alignItems:'center', marginHorizontal:16, marginBottom:12, flexDirection:'row', justifyContent:'center', gap:8}}>
+                <Text style={{fontSize:18}}>⚙️</Text>
+                <Text style={{color:'#fff', fontWeight:'bold', fontSize:15}}>관리자 페이지</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={signOut} style={{margin:16,padding:12,borderWidth:1,borderColor:'#ddd',borderRadius:8,alignItems:'center'}}>
               <Text style={{color:'#888'}}>로그아웃</Text>
             </TouchableOpacity>
@@ -2365,6 +2464,99 @@ export default function App() {
                   </Text>
                 </TouchableOpacity>
               </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {showAdminPage && (
+        <Modal transparent animationType="slide" visible={showAdminPage}>
+          <View style={{flex:1, backgroundColor:'#f5f5f5'}}>
+            <View style={{backgroundColor:'#1a1a2e', padding:20, paddingTop:60, flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
+              <Text style={{color:'#fff', fontSize:18, fontWeight:'bold'}}>⚙️ 관리자 페이지</Text>
+              <TouchableOpacity onPress={() => setShowAdminPage(false)}>
+                <Text style={{color:'#fff', fontSize:18}}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{flex:1}}>
+              <Text style={{padding:16, fontWeight:'bold', fontSize:16}}>
+                📌 장소 제보 목록 ({placeReports.length}건)
+              </Text>
+
+              {placeReports.length === 0 ? (
+                <View style={{padding:40, alignItems:'center'}}>
+                  <Text style={{color:'#aaa'}}>제보된 장소가 없습니다</Text>
+                </View>
+              ) : (
+                placeReports.map(report => (
+                  <View key={report.id} style={{backgroundColor:'#fff', margin:8, borderRadius:12, padding:16, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:4}}>
+                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                      <Text style={{fontWeight:'bold', fontSize:15}}>{report.name}</Text>
+                      <View style={{backgroundColor: report.status === 'pending' ? '#fff8f0' : report.status === 'approved' ? '#f0fff0' : '#fff0f0', paddingHorizontal:8, paddingVertical:4, borderRadius:8}}>
+                        <Text style={{fontSize:12, color: report.status === 'pending' ? '#E8751A' : report.status === 'approved' ? '#2e7d32' : '#c62828'}}>
+                          {report.status === 'pending' ? '⏳ 대기중' : report.status === 'approved' ? '✅ 승인' : '❌ 반려'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={{color:'#666', fontSize:13, marginBottom:4}}>📂 {report.category} · 📍 {report.city}</Text>
+                    <Text style={{color:'#666', fontSize:13, marginBottom:4}}>🏠 {report.address}</Text>
+                    {report.description ? <Text style={{color:'#888', fontSize:12, marginBottom:8}}>{report.description}</Text> : null}
+                    <Text style={{color:'#aaa', fontSize:11, marginBottom:12}}>제보자: {report.user_name} · {new Date(report.created_at).toLocaleDateString('ko-KR')}</Text>
+
+                    {report.photo_url && (
+                      <Image source={{uri: report.photo_url}} style={{width:'100%' as any, height:150, borderRadius:8, marginBottom:12}} />
+                    )}
+
+                    {report.status === 'pending' && (
+                      <View style={{flexDirection:'row', gap:8}}>
+                        <TouchableOpacity
+                          onPress={() => handleApproveReport(report)}
+                          style={{flex:1, backgroundColor:'#E8751A', padding:12, borderRadius:8, alignItems:'center'}}>
+                          <Text style={{color:'#fff', fontWeight:'bold'}}>✅ 승인</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => { setRejectingReport(report); setShowRejectModal(true); }}
+                          style={{flex:1, backgroundColor:'#f5f5f5', borderWidth:1, borderColor:'#ddd', padding:12, borderRadius:8, alignItems:'center'}}>
+                          <Text style={{color:'#c62828', fontWeight:'bold'}}>❌ 반려</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
+
+      {showRejectModal && (
+        <Modal transparent animationType="fade" visible={showRejectModal}>
+          <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.5)', justifyContent:'center', padding:24}}>
+            <View style={{backgroundColor:'#fff', borderRadius:16, padding:24}}>
+              <Text style={{fontWeight:'bold', fontSize:16, marginBottom:16}}>❌ 반려 사유 입력</Text>
+              <Text style={{color:'#666', marginBottom:12}}>"{rejectingReport?.name}"</Text>
+              <TextInput
+                value={rejectReason}
+                onChangeText={setRejectReason}
+                placeholder="반려 사유를 입력하세요 (예: 이미 등록된 장소입니다)"
+                multiline
+                numberOfLines={3}
+                style={{borderWidth:1, borderColor:'#ddd', borderRadius:8, padding:12, marginBottom:16, height:80, textAlignVertical:'top'}}
+              />
+              <View style={{flexDirection:'row', gap:8}}>
+                <TouchableOpacity
+                  onPress={() => { setShowRejectModal(false); setRejectReason(''); }}
+                  style={{flex:1, backgroundColor:'#f5f5f5', padding:12, borderRadius:8, alignItems:'center'}}>
+                  <Text style={{color:'#666'}}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleRejectReport}
+                  style={{flex:1, backgroundColor:'#c62828', padding:12, borderRadius:8, alignItems:'center'}}>
+                  <Text style={{color:'#fff', fontWeight:'bold'}}>반려 처리</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
