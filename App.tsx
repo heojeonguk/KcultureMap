@@ -280,6 +280,14 @@ export default function App() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showPlaceReport, setShowPlaceReport] = useState(false)
+  const [reportName, setReportName] = useState('')
+  const [reportCategory, setReportCategory] = useState('맛집')
+  const [reportCity, setReportCity] = useState('서울')
+  const [reportAddress, setReportAddress] = useState('')
+  const [reportDescription, setReportDescription] = useState('')
+  const [reportPhoto, setReportPhoto] = useState<string | null>(null)
+  const [reportSubmitting, setReportSubmitting] = useState(false)
   const L = LANGS[lang] || LANGS['ko']
   
   const editDeleteTexts: any = {
@@ -522,6 +530,55 @@ export default function App() {
       }
     };
     input.click();
+  };
+
+  const handleReportPhotoUpload = async () => {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const ext = file.name.split('.').pop();
+      const filePath = `reports/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('community-photos').upload(filePath, file);
+      if (!error) {
+        const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+        setReportPhoto(data.publicUrl);
+      }
+    };
+    input.click();
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportName.trim()) { window.alert('장소명을 입력해주세요.'); return; }
+    if (!reportAddress.trim()) { window.alert('주소를 입력해주세요.'); return; }
+    setReportSubmitting(true);
+    const { error } = await supabase.from('place_reports').insert({
+      user_id: user?.id || null,
+      user_name: user?.user_metadata?.nickname || '익명',
+      name: reportName.trim(),
+      category: reportCategory,
+      city: reportCity,
+      address: reportAddress.trim(),
+      description: reportDescription.trim(),
+      photo_url: reportPhoto || null,
+      status: 'pending',
+    });
+    setReportSubmitting(false);
+    if (!error) {
+      window.alert('장소 제보가 완료됐습니다! 검토 후 등록해드릴게요 😊');
+      setShowPlaceReport(false);
+      setReportName('');
+      setReportCategory('맛집');
+      setReportCity('서울');
+      setReportAddress('');
+      setReportDescription('');
+      setReportPhoto(null);
+    } else {
+      window.alert('제보 중 오류가 발생했습니다.');
+    }
   };
 
   const fetchNotifications = async () => {
@@ -966,6 +1023,12 @@ export default function App() {
               <Text style={s.regionBarArrow}>▼</Text>
             </TouchableOpacity>
             <ScrollView ref={exploreScrollRef} style={{flex:1}} showsVerticalScrollIndicator={false} scrollsToTop={true} onScroll={(e)=>{if(typeof window!=='undefined'){(window as any).__lastScrollY=e.nativeEvent.contentOffset.y;}}} scrollEventThrottle={16}>
+              <TouchableOpacity
+                onPress={() => setShowPlaceReport(true)}
+                style={{flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8, backgroundColor:'#fff8f0', borderWidth:1, borderColor:'#E8751A', borderRadius:12, padding:12, margin:16, marginBottom:8}}>
+                <Text style={{fontSize:18}}>📌</Text>
+                <Text style={{color:'#E8751A', fontWeight:'bold', fontSize:14}}>새로운 장소 제보하기</Text>
+              </TouchableOpacity>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catScroll}>
                 {CATS.map(cat=>(
                   <TouchableOpacity key={cat.key} onPress={()=>setSelectedCat(cat.key)} style={[s.catPill,selectedCat===cat.key&&{backgroundColor:cat.color,borderColor:cat.color}]}>
@@ -1567,6 +1630,9 @@ export default function App() {
                     <Text style={[s.postCatText,postCategory===c.k&&s.postCatTextActive]}>{c.label}</Text>
                   </TouchableOpacity>
                 ))}
+                <TouchableOpacity style={s.postCatBtn} onPress={() => { setShowPlaceReport(true); setShowWriteModal(false); }}>
+                  <Text style={s.postCatText}>📌 장소제보</Text>
+                </TouchableOpacity>
               </View>
               <TextInput style={s.writeTitleInput} placeholder={L.post_title} value={postTitle} onChangeText={setPostTitle} placeholderTextColor="#bbb"/>
               <TextInput style={s.writeCityInput} placeholder={L.post_city} value={postCity} onChangeText={setPostCity} placeholderTextColor="#bbb"/>
@@ -2219,6 +2285,88 @@ export default function App() {
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
+        </Modal>
+      )}
+
+      {showPlaceReport && (
+        <Modal transparent animationType="slide" visible={showPlaceReport}>
+          <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.5)'}}>
+            <View style={{flex:1, backgroundColor:'#fff', marginTop:60, borderTopLeftRadius:20, borderTopRightRadius:20}}>
+              <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:20, borderBottomWidth:1, borderBottomColor:'#eee'}}>
+                <Text style={{fontSize:18, fontWeight:'bold'}}>📌 장소 제보하기</Text>
+                <TouchableOpacity onPress={() => setShowPlaceReport(false)}>
+                  <Text style={{fontSize:18}}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={{padding:20}}>
+                <Text style={{fontWeight:'bold', marginBottom:6}}>장소명 *</Text>
+                <TextInput
+                  value={reportName}
+                  onChangeText={setReportName}
+                  placeholder="장소명을 입력하세요"
+                  style={{borderWidth:1, borderColor:'#ddd', borderRadius:8, padding:12, marginBottom:16}}
+                />
+
+                <Text style={{fontWeight:'bold', marginBottom:6}}>카테고리 *</Text>
+                <View style={{flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:16}}>
+                  {['맛집','카페','명소','쇼핑','액티비티'].map(cat => (
+                    <TouchableOpacity key={cat}
+                      onPress={() => setReportCategory(cat)}
+                      style={{paddingHorizontal:16, paddingVertical:8, borderRadius:20, backgroundColor: reportCategory === cat ? '#E8751A' : '#f0f0f0'}}>
+                      <Text style={{color: reportCategory === cat ? '#fff' : '#333'}}>{cat}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={{fontWeight:'bold', marginBottom:6}}>지역 *</Text>
+                <View style={{flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:16}}>
+                  {['서울','부산','제주','강원','경상','전라','충청','경기','인천'].map(city => (
+                    <TouchableOpacity key={city}
+                      onPress={() => setReportCity(city)}
+                      style={{paddingHorizontal:16, paddingVertical:8, borderRadius:20, backgroundColor: reportCity === city ? '#E8751A' : '#f0f0f0'}}>
+                      <Text style={{color: reportCity === city ? '#fff' : '#333'}}>{city}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={{fontWeight:'bold', marginBottom:6}}>주소 *</Text>
+                <TextInput
+                  value={reportAddress}
+                  onChangeText={setReportAddress}
+                  placeholder="도로명 주소를 입력하세요"
+                  style={{borderWidth:1, borderColor:'#ddd', borderRadius:8, padding:12, marginBottom:16}}
+                />
+
+                <Text style={{fontWeight:'bold', marginBottom:6}}>설명 (선택)</Text>
+                <TextInput
+                  value={reportDescription}
+                  onChangeText={setReportDescription}
+                  placeholder="장소에 대한 설명을 입력하세요"
+                  multiline
+                  numberOfLines={4}
+                  style={{borderWidth:1, borderColor:'#ddd', borderRadius:8, padding:12, marginBottom:16, height:100, textAlignVertical:'top'}}
+                />
+
+                <TouchableOpacity
+                  onPress={handleReportPhotoUpload}
+                  style={{borderWidth:1, borderColor:'#ddd', borderRadius:8, padding:12, alignItems:'center', marginBottom:16}}>
+                  <Text style={{color:'#888'}}>📷 사진 추가 (선택)</Text>
+                </TouchableOpacity>
+                {reportPhoto && (
+                  <Image source={{uri: reportPhoto}} style={{width:'100%' as any, height:200, borderRadius:8, marginBottom:16}} />
+                )}
+
+                <TouchableOpacity
+                  onPress={handleReportSubmit}
+                  disabled={reportSubmitting}
+                  style={{backgroundColor:'#E8751A', padding:16, borderRadius:12, alignItems:'center', marginBottom:40}}>
+                  <Text style={{color:'#fff', fontWeight:'bold', fontSize:16}}>
+                    {reportSubmitting ? '제보 중...' : '📌 장소 제보하기'}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
         </Modal>
       )}
 
