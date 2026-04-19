@@ -268,6 +268,7 @@ export default function App() {
   const [editPhoto, setEditPhoto] = useState<string | null>(null)
   const [editPhotoUploading, setEditPhotoUploading] = useState(false)
   const [userProfileModal, setUserProfileModal] = useState<{visible: boolean, userId: string, nickname: string}>({visible: false, userId: '', nickname: ''})
+  const [nicknameMenu, setNicknameMenu] = useState<{visible:boolean, userId:string, nickname:string, x:number, y:number}>({visible:false, userId:'', nickname:'', x:0, y:0})
   const [followStats, setFollowStats] = useState<{followers: number, following: number}>({followers: 0, following: 0})
   const [isFollowing, setIsFollowing] = useState(false)
   const L = LANGS[lang] || LANGS['ko']
@@ -701,7 +702,7 @@ export default function App() {
     if(!postContent.trim()) { window.alert('내용을 입력해주세요'); return }
     setPostSubmitting(true)
     const {error} = await supabase.from('posts').insert({
-      user_name: user?.user_metadata?.nickname||'익명', nation:'✍️', title:postTitle.trim(),
+      user_id: user?.id, user_name: user?.user_metadata?.nickname||'익명', nation:'✍️', title:postTitle.trim(),
       content:postContent.trim(), city:postCity.trim()||null,
       category:postCategory, likes:0,
       photo_url: postPhoto || null,
@@ -1074,7 +1075,10 @@ export default function App() {
                       <View style={{flex:1}}>
                         <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
                           <TouchableOpacity
-                            onPress={() => post.user_id && openUserProfile(post.user_id, post.user_name)}
+                            onPress={(e) => {
+                              if (!post.user_id || post.user_id === user?.id) return;
+                              setNicknameMenu({visible:true, userId:post.user_id, nickname:post.user_name, x:0, y:0});
+                            }}
                             style={{cursor: 'pointer'} as any}>
                             <Text style={{fontWeight:'bold', color:'#E8751A'}}>{post.user_name}</Text>
                           </TouchableOpacity><Text style={s.postNation}>{post.nation}</Text>
@@ -1840,6 +1844,38 @@ export default function App() {
               </TouchableOpacity>
             </View>
           </View>
+        </Modal>
+      )}
+
+      {nicknameMenu.visible && (
+        <Modal transparent animationType="fade" visible={nicknameMenu.visible}>
+          <TouchableOpacity
+            style={{flex:1, backgroundColor:'rgba(0,0,0,0.3)'}}
+            onPress={() => setNicknameMenu({visible:false, userId:'', nickname:'', x:0, y:0})}>
+            <View style={{position:'absolute', bottom:100, left:20, right:20, backgroundColor:'#fff', borderRadius:16, overflow:'hidden', shadowColor:'#000', shadowOpacity:0.2, shadowRadius:10}}>
+              <Text style={{padding:16, fontWeight:'bold', fontSize:16, borderBottomWidth:1, borderBottomColor:'#eee', textAlign:'center'}}>
+                {nicknameMenu.nickname}
+              </Text>
+              <TouchableOpacity
+                style={{padding:16, borderBottomWidth:1, borderBottomColor:'#eee', flexDirection:'row', alignItems:'center', gap:12}}
+                onPress={() => {
+                  setNicknameMenu({visible:false, userId:'', nickname:'', x:0, y:0});
+                  openUserProfile(nicknameMenu.userId, nicknameMenu.nickname);
+                }}>
+                <Text style={{fontSize:18}}>👤</Text>
+                <Text style={{fontSize:15}}>프로필 보기 / 팔로우</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{padding:16, flexDirection:'row', alignItems:'center', gap:12}}
+                onPress={() => {
+                  setNicknameMenu({visible:false, userId:'', nickname:'', x:0, y:0});
+                  window.alert('메시지 기능은 준비 중입니다.');
+                }}>
+                <Text style={{fontSize:18}}>✉️</Text>
+                <Text style={{fontSize:15}}>메시지 보내기</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         </Modal>
       )}
 
