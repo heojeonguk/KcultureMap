@@ -272,6 +272,9 @@ export default function App() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [followStats, setFollowStats] = useState<{followers: number, following: number}>({followers: 0, following: 0})
   const [isFollowing, setIsFollowing] = useState(false)
+  const [userBio, setUserBio] = useState<string>(user?.user_metadata?.bio || '')
+  const [editingBio, setEditingBio] = useState(false)
+  const [myPostsGrid, setMyPostsGrid] = useState<any[]>([])
   const L = LANGS[lang] || LANGS['ko']
   
   const editDeleteTexts: any = {
@@ -512,6 +515,13 @@ export default function App() {
       }
     };
     input.click();
+  };
+
+  const handleSaveBio = async () => {
+    await supabase.auth.updateUser({ data: { bio: userBio } });
+    const { data: { user: updatedUser } } = await supabase.auth.getUser();
+    if (updatedUser) setUser(updatedUser);
+    setEditingBio(false);
   };
 
   const fetchFollowStats = async (userId: string) => {
@@ -1173,6 +1183,30 @@ export default function App() {
               </TouchableOpacity>
               <Text style={s.profileName}>{user?.user_metadata?.nickname||user?.email}</Text>
               <Text style={s.profileSub}>K컬처MAP 여행자</Text>
+              {editingBio ? (
+                <View style={{flexDirection:'row', alignItems:'center', gap:8, marginTop:8, paddingHorizontal:24}}>
+                  <TextInput
+                    value={userBio}
+                    onChangeText={setUserBio}
+                    placeholder="한줄 소개를 입력하세요"
+                    placeholderTextColor="#aaa"
+                    style={{flex:1, color:'#fff', borderBottomWidth:1, borderBottomColor:'#E8751A', paddingVertical:4, fontSize:14}}
+                    maxLength={50}
+                  />
+                  <TouchableOpacity onPress={handleSaveBio}>
+                    <Text style={{color:'#E8751A', fontWeight:'bold'}}>저장</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setEditingBio(false)}>
+                    <Text style={{color:'#aaa'}}>취소</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setEditingBio(true)} style={{marginTop:8}}>
+                  <Text style={{color:'#aaa', fontSize:13}}>
+                    {user?.user_metadata?.bio || '+ 한줄 소개 추가'}
+                  </Text>
+                </TouchableOpacity>
+              )}
               <View style={{flexDirection:'row', gap:24, marginTop:8}}>
                 <TouchableOpacity onPress={() => user && fetchFollowStats(user.id)}>
                   <Text style={{textAlign:'center', fontWeight:'bold', fontSize:16, color:'#fff'}}>{followStats.followers}</Text>
@@ -1183,6 +1217,15 @@ export default function App() {
                   <Text style={{textAlign:'center', color:'#fff', fontSize:12}}>팔로잉</Text>
                 </TouchableOpacity>
               </View>
+              {(()=>{const visitedCities=[...new Set(myPosts.map((p:any)=>p.city).filter(Boolean))];return visitedCities.length>0&&(
+                <View style={{flexDirection:'row', flexWrap:'wrap', gap:6, paddingHorizontal:16, marginTop:8, justifyContent:'center'}}>
+                  {visitedCities.map((city:any)=>(
+                    <View key={city} style={{backgroundColor:'#E8751A', borderRadius:12, paddingHorizontal:10, paddingVertical:4}}>
+                      <Text style={{color:'#fff', fontSize:12}}>📍 {city}</Text>
+                    </View>
+                  ))}
+                </View>
+              );})()}
               <View style={s.statRow}>
                 <View style={s.statCell}><Text style={s.statVal}>{myReviewCount}</Text><Text style={s.statKey}>{L.review}</Text></View>
                 <View style={s.statCell}><Text style={s.statVal}>{saved.length}</Text><Text style={s.statKey}>{L.saving}</Text></View>
@@ -1194,6 +1237,16 @@ export default function App() {
             </View>
             <View style={{padding:16}}>
               <Text style={s.sectionTitle}>✏️ {L.my_posts}</Text>
+              {myPosts.filter((p:any)=>p.photo_url).length>0&&(
+                <View style={{flexDirection:'row', flexWrap:'wrap', gap:2, marginBottom:16}}>
+                  {myPosts.filter((p:any)=>p.photo_url).map((p:any)=>(
+                    <TouchableOpacity key={p.id} style={{width:'32.5%', aspectRatio:1}}
+                      onPress={()=>setSelectedPost(p)}>
+                      <Image source={{uri:p.photo_url}} style={{width:'100%', height:'100%'}} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               {myPosts.length===0?<Text style={s.emptyText}>{L.no_posts}</Text>:myPosts.map((post:any)=>(
                 <View key={post.id} style={s.myPostCard}>
                   <TouchableOpacity onPress={()=>{setSelectedPost(post);loadComments(post.id)}}>
