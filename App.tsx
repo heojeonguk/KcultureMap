@@ -1234,11 +1234,16 @@ export default function App() {
                     {places.filter(p=>p.featured).map((p:any)=>(
                       <TouchableOpacity key={p.id} style={s.featCard} onPress={()=>openDetail(p)}>
                         <View style={[s.cardImg,{backgroundColor:CAT_BG[p.category]||'#f5f0e8'}]}>
-                          <Text style={{fontSize:54}}>{p.emoji}</Text>
+                          {p.photo_url ? (
+                            <Image source={{uri: p.photo_url}} style={{width:'100%' as any, height:'100%' as any, borderTopLeftRadius:12, borderTopRightRadius:12}} resizeMode="cover" />
+                          ) : (
+                            <Text style={{fontSize:54}}>{p.emoji}</Text>
+                          )}
                           <TouchableOpacity style={[s.heartBtn,saved.includes(p.id)&&s.heartSaved]} onPress={()=>toggleSave(p.id)}><Text style={{color:'#fff',fontSize:14}}>♥</Text></TouchableOpacity>
                         </View>
                         <View style={s.cardBody}>
                           <Text style={s.cardName}>{p.name}</Text>
+                          {p.reported_by && <Text style={{fontSize:11, color:'#E8751A', marginBottom:2}}>📌 {p.reported_by} 제보</Text>}
                           <View style={s.cardMeta}><Text style={s.stars}>{'★'.repeat(Math.floor(p.rating))}</Text><Text style={s.metaText}> {p.rating}</Text><Text style={[s.metaText,{color:p.is_open?'#1A7A4A':'#C8102E'}]}>{' · '}{p.is_open?L.open:L.closed}</Text></View>
                           {(p.hours||p.price_range)&&<View style={s.chipRow}>{p.hours&&<View style={s.chipHours}><Text style={s.chipHoursText}>🕐 {p.hours}</Text></View>}{p.price_range&&<View style={s.chipPrice}><Text style={s.chipPriceText}>💰 {p.price_range}</Text></View>}</View>}
                           <Text style={s.cardAddr}>{p.address}{p.district?' · '+p.district:''}</Text>
@@ -1254,9 +1259,16 @@ export default function App() {
                   {places.length===0&&<Text style={s.emptyText}>해당 조건의 장소가 없습니다</Text>}
                   {places.filter(p=>!p.featured).map((p:any)=>(
                     <TouchableOpacity key={p.id} style={s.listCard} onPress={()=>openDetail(p)}>
-                      <View style={[s.listThumb,{backgroundColor:CAT_BG[p.category]||'#f5f0e8'}]}><Text style={{fontSize:26}}>{p.emoji}</Text></View>
+                      <View style={[s.listThumb,{backgroundColor:CAT_BG[p.category]||'#f5f0e8', overflow:'hidden'}]}>
+                        {p.photo_url ? (
+                          <Image source={{uri: p.photo_url}} style={{width:56, height:56, borderRadius:10}} resizeMode="cover" />
+                        ) : (
+                          <Text style={{fontSize:26}}>{p.emoji}</Text>
+                        )}
+                      </View>
                       <View style={s.listInfo}>
                         <Text style={s.listName}>{p.name}</Text>
+                        {p.reported_by && <Text style={{fontSize:11, color:'#E8751A', marginTop:2}}>📌 {p.reported_by} 제보</Text>}
                         <Text style={s.listAddr}>{p.address}{p.district?' · '+p.district:''}</Text>
                         <View style={s.tagRow}>
                           <View style={[s.tag,p.is_open?s.tagOpen:s.tagClosed]}><Text style={[s.tagText,{color:p.is_open?'#166534':'#991b1b'}]}>{p.is_open?L.open:L.closed}</Text></View>
