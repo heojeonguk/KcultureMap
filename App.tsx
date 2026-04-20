@@ -288,6 +288,7 @@ export default function App() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectingReport, setRejectingReport] = useState<any>(null)
   const [showPlaceReport, setShowPlaceReport] = useState(false)
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
   const [reportName, setReportName] = useState('')
   const [reportCategory, setReportCategory] = useState('맛집')
   const [reportCity, setReportCity] = useState('서울')
@@ -2134,7 +2135,12 @@ export default function App() {
             <View style={s.detailContainer}>
               <View style={[s.detailImg,{backgroundColor:CAT_BG[selectedPlace.category]||'#f5f0e8'}]}>
                 {selectedPlace.photo_url ? (
-                  <Image source={{uri: selectedPlace.photo_url}} style={{width:'100%' as any, height:200, borderRadius:12}} resizeMode="cover" />
+                  <TouchableOpacity onPress={() => setFullscreenImage(selectedPlace.photo_url)}>
+                    <Image source={{uri: selectedPlace.photo_url}} style={{width:'100%' as any, height:200, borderRadius:12}} resizeMode="cover" />
+                    <View style={{position:'absolute', bottom:8, right:8, backgroundColor:'rgba(0,0,0,0.5)', borderRadius:6, padding:4}}>
+                      <Text style={{color:'#fff', fontSize:11}}>🔍 전체보기</Text>
+                    </View>
+                  </TouchableOpacity>
                 ) : (
                   <Text style={{fontSize:76}}>{selectedPlace.emoji}</Text>
                 )}
@@ -2702,6 +2708,21 @@ export default function App() {
               </View>
             </View>
           </View>
+        </Modal>
+      )}
+
+      {fullscreenImage && (
+        <Modal transparent animationType="fade" visible={!!fullscreenImage}>
+          <TouchableOpacity
+            style={{flex:1, backgroundColor:'rgba(0,0,0,0.95)', justifyContent:'center', alignItems:'center'}}
+            onPress={() => setFullscreenImage(null)}>
+            <Image
+              source={{uri: fullscreenImage}}
+              style={{width:'100%' as any, height:'80%' as any}}
+              resizeMode="contain"
+            />
+            <Text style={{color:'#fff', marginTop:16, opacity:0.6, fontSize:13}}>탭하면 닫힙니다</Text>
+          </TouchableOpacity>
         </Modal>
       )}
 
