@@ -647,9 +647,34 @@ export default function App() {
 
   const handleDeletePlace = async (placeId: string, placeName: string) => {
     if (!window.confirm(`"${placeName}" 장소를 삭제하시겠습니까?`)) return;
+
     const { error } = await supabase.from('places').delete().eq('id', placeId);
     if (!error) {
+      await supabase.from('place_reports')
+        .update({ status: 'deleted' })
+        .eq('name', placeName)
+        .eq('status', 'approved');
+
       setAdminPlaces(prev => prev.filter(p => p.id !== placeId));
+
+      const { data: reports } = await supabase
+        .from('place_reports')
+        .select('user_id')
+        .eq('name', placeName);
+
+      if (reports) {
+        for (const report of reports) {
+          if (report.user_id) {
+            await supabase.from('notifications').insert({
+              user_id: report.user_id,
+              type: 'comment',
+              message: `📌 "${placeName}" 장소가 관리자에 의해 삭제됐습니다.`,
+              from_user_name: 'K컬처MAP 관리자',
+              from_avatar_url: null,
+            });
+          }
+        }
+      }
       window.alert('삭제됐습니다.');
     } else {
       window.alert('삭제 오류: ' + error.message);
@@ -1768,9 +1793,9 @@ export default function App() {
                     <View key={report.id} style={{backgroundColor:'#fff', borderRadius:12, padding:16, marginBottom:8, borderWidth:1, borderColor:'#f0f0f0'}}>
                       <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6}}>
                         <Text style={{fontWeight:'bold', fontSize:14}}>{report.name}</Text>
-                        <View style={{backgroundColor: report.status === 'pending' ? '#fff8f0' : report.status === 'approved' ? '#f0fff0' : '#fff0f0', paddingHorizontal:8, paddingVertical:4, borderRadius:8}}>
-                          <Text style={{fontSize:12, color: report.status === 'pending' ? '#E8751A' : report.status === 'approved' ? '#2e7d32' : '#c62828'}}>
-                            {report.status === 'pending' ? '⏳ 검토중' : report.status === 'approved' ? '✅ 등록완료' : '❌ 반려'}
+                        <View style={{backgroundColor: report.status === 'deleted' ? '#f5f5f5' : report.status === 'pending' ? '#fff8f0' : report.status === 'approved' ? '#f0fff0' : '#fff0f0', paddingHorizontal:8, paddingVertical:4, borderRadius:8}}>
+                          <Text style={{fontSize:12, color: report.status === 'deleted' ? '#888' : report.status === 'pending' ? '#E8751A' : report.status === 'approved' ? '#2e7d32' : '#c62828'}}>
+                            {report.status === 'deleted' ? '🗑️ 삭제됨' : report.status === 'pending' ? '⏳ 검토중' : report.status === 'approved' ? '✅ 등록완료' : '❌ 반려'}
                           </Text>
                         </View>
                       </View>
