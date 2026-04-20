@@ -1002,6 +1002,14 @@ export default function App() {
     setUser(null)
   }
 
+  const getUserLevel = (postCount: number, reviewCount: number, followerCount: number) => {
+    if (postCount >= 1000 && reviewCount >= 100 && followerCount >= 100) return { emoji: '👑', name: 'K컬처 레전드', level: 5 };
+    if (postCount >= 500 && reviewCount >= 50) return { emoji: '🌟', name: 'K컬처 마스터', level: 4 };
+    if (postCount >= 100 && reviewCount >= 50) return { emoji: '🏅', name: 'K컬처 러버', level: 3 };
+    if (postCount >= 10) return { emoji: '🗺️', name: '탐험가', level: 2 };
+    return { emoji: '✈️', name: '입문 여행자', level: 1 };
+  };
+
   async function submitPost() {
     if(!user) { setShowAuthModal(true); return }
     if(!postTitle.trim()) { window.alert('제목을 입력해주세요'); return }
@@ -1013,6 +1021,7 @@ export default function App() {
       category:postCategory, likes:0,
       photo_url: postPhoto || null,
       avatar_url: user?.user_metadata?.avatar_url || null,
+      user_level_emoji: getUserLevel(myPosts.length, myReviews.length, followStats.followers).emoji,
     })
     if(!error) {
       setPostTitle(''); setPostContent(''); setPostCity(''); setPostCategory('free'); setPostPhoto(null)
@@ -1469,7 +1478,10 @@ export default function App() {
                               setNicknameMenu({visible:true, userId:post.user_id, nickname:post.user_name, x:0, y:0});
                             }}
                             style={{cursor: 'pointer'} as any}>
-                            <Text style={{fontWeight:'bold', color:'#E8751A'}}>{post.user_name}</Text>
+                            <View style={{flexDirection:'row', alignItems:'center', gap:4}}>
+                              <Text style={{fontWeight:'bold', color:'#E8751A'}}>{post.user_name}</Text>
+                              <Text style={{fontSize:12}}>{post.user_level_emoji || '✈️'}</Text>
+                            </View>
                           </TouchableOpacity><Text style={s.postNation}>{post.nation}</Text>
                           {post.city&&<View style={s.postCityTag}><Text style={s.postCityTagText}>📍{post.city}</Text></View>}
                         </View>
@@ -1536,8 +1548,11 @@ export default function App() {
                 )}
                 <Text style={{color:'#aaa', fontSize:11, marginTop:4}}>사진 변경</Text>
               </TouchableOpacity>
-              <Text style={s.profileName}>{user?.user_metadata?.nickname||user?.email}</Text>
-              <Text style={s.profileSub}>K컬처MAP 여행자</Text>
+              <View style={{flexDirection:'row', alignItems:'center', gap:6}}>
+                <Text style={s.profileName}>{user?.user_metadata?.nickname||user?.email}</Text>
+                <Text style={{fontSize:20}}>{getUserLevel(myPosts.length, myReviews.length, followStats.followers).emoji}</Text>
+              </View>
+              <Text style={{color:'#aaa', fontSize:13, marginTop:2}}>{getUserLevel(myPosts.length, myReviews.length, followStats.followers).name}</Text>
               {editingBio ? (
                 <View style={{flexDirection:'row', alignItems:'center', gap:8, marginTop:8, paddingHorizontal:24}}>
                   <TextInput
