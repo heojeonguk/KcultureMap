@@ -649,21 +649,19 @@ export default function App() {
     if (!window.confirm(`"${placeName}" 장소를 삭제하시겠습니까?`)) return;
 
     const { error } = await supabase.from('places').delete().eq('id', placeId);
+
     if (!error) {
-      await supabase.from('place_reports')
+      const { data: updatedReports, error: updateError } = await supabase
+        .from('place_reports')
         .update({ status: 'deleted' })
         .eq('name', placeName)
-        .eq('status', 'approved');
+        .eq('status', 'approved')
+        .select('user_id');
 
-      setAdminPlaces(prev => prev.filter(p => p.id !== placeId));
+      console.log('updated reports:', updatedReports, updateError);
 
-      const { data: reports } = await supabase
-        .from('place_reports')
-        .select('user_id')
-        .eq('name', placeName);
-
-      if (reports) {
-        for (const report of reports) {
+      if (updatedReports && updatedReports.length > 0) {
+        for (const report of updatedReports) {
           if (report.user_id) {
             await supabase.from('notifications').insert({
               user_id: report.user_id,
@@ -675,6 +673,8 @@ export default function App() {
           }
         }
       }
+
+      setAdminPlaces(prev => prev.filter(p => p.id !== placeId));
       window.alert('삭제됐습니다.');
     } else {
       window.alert('삭제 오류: ' + error.message);
