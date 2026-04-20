@@ -349,7 +349,7 @@ export default function App() {
   }, [user])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
-  useEffect(() => { if(tab==='profile') { loadMyData(); loadSavedPlacesWithDetails(); } }, [tab])
+  useEffect(() => { if(tab==='profile') { loadMyData(); loadSavedPlacesWithDetails(); fetchMyReports(); } }, [tab])
   useEffect(() => { loadBestPosts() }, [])
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -652,6 +652,9 @@ export default function App() {
              report.category === '쇼핑' ? '🛍️' : '🎯',
       featured: false,
       is_open: true,
+      photo_url: report.photo_url || null,
+      lat: null,
+      lng: null,
     });
 
     if (!error) {
@@ -668,7 +671,8 @@ export default function App() {
           from_avatar_url: null,
         });
       }
-      fetchPlaceReports();
+      await fetchPlaceReports();
+      await fetchMyReports();
       window.alert('장소가 등록됐습니다!');
     }
   };
@@ -693,7 +697,8 @@ export default function App() {
     setShowRejectModal(false);
     setRejectReason('');
     setRejectingReport(null);
-    fetchPlaceReports();
+    await fetchPlaceReports();
+    await fetchMyReports();
     window.alert('반려 처리됐습니다.');
   };
 
@@ -2534,7 +2539,7 @@ export default function App() {
                 </View>
               ) : (
                 placeReports.map(report => (
-                  <View key={report.id} style={{backgroundColor:'#fff', margin:8, borderRadius:12, padding:16, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:4}}>
+                  <View key={report.id} style={{backgroundColor:'#fff', margin:8, borderRadius:12, padding:16, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:4, opacity: report.status === 'pending' ? 1 : 0.6}}>
                     <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
                       <Text style={{fontWeight:'bold', fontSize:15}}>{report.name}</Text>
                       <View style={{backgroundColor: report.status === 'pending' ? '#fff8f0' : report.status === 'approved' ? '#f0fff0' : '#fff0f0', paddingHorizontal:8, paddingVertical:4, borderRadius:8}}>
