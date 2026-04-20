@@ -1700,12 +1700,11 @@ export default function App() {
                       title="travel-map"
                     />
                   ) : (
-                    <WebView
-                      source={{ html: mapHtml }}
-                      style={{height:300}}
-                      scrollEnabled={false}
-                      javaScriptEnabled={true}
-                    />
+                    <View style={{height:200, alignItems:'center', justifyContent:'center', backgroundColor:'#f0f0f0', borderRadius:12}}>
+                      <Text style={{fontSize:40, marginBottom:8}}>🗺️</Text>
+                      <Text style={{color:'#888', fontSize:14}}>저장한 장소: {savedPlacesData.length}곳</Text>
+                      <Text style={{color:'#aaa', fontSize:12, marginTop:4}}>웹에서 지도를 확인하세요</Text>
+                    </View>
                   )}
                   <View style={{padding:16, borderTopWidth:1, borderTopColor:'#eee'}}>
                     <Text style={{fontWeight:'bold', fontSize:13, marginBottom:8}}>저장한 장소</Text>
