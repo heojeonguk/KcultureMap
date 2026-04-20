@@ -678,6 +678,7 @@ export default function App() {
       is_open: true,
       lat: null,
       lng: null,
+      reported_by: report.user_name || null,
     });
 
     if (!error) {
@@ -1318,9 +1319,13 @@ export default function App() {
                       shadowColor:'#000', shadowOpacity:0.04, shadowRadius:4}}
                     onPress={()=>openDetail(place)}>
                     <View style={{flexDirection:'row', alignItems:'center', gap:12}}>
-                      <View style={{width:48, height:48, borderRadius:12, backgroundColor:'#f8f5f0',
-                        justifyContent:'center', alignItems:'center'}}>
-                        <Text style={{fontSize:28}}>{place.emoji||'📍'}</Text>
+                      <View style={{width:56, height:56, borderRadius:12, backgroundColor:'#f8f5f0',
+                        justifyContent:'center', alignItems:'center', overflow:'hidden'}}>
+                        {place.photo_url ? (
+                          <Image source={{uri: place.photo_url}} style={{width:56, height:56, borderRadius:12}} resizeMode="cover" />
+                        ) : (
+                          <Text style={{fontSize:28}}>{place.emoji||'📍'}</Text>
+                        )}
                       </View>
                       <View style={{flex:1}}>
                         <View style={{flexDirection:'row', alignItems:'center', gap:6}}>
@@ -1542,6 +1547,10 @@ export default function App() {
                 <View style={s.statCell}><Text style={s.statVal}>{myReviewCount}</Text><Text style={s.statKey}>{L.review}</Text></View>
                 <View style={s.statCell}><Text style={s.statVal}>{saved.length}</Text><Text style={s.statKey}>{L.saving}</Text></View>
                 <View style={s.statCell}><Text style={s.statVal}>{myPosts.length}</Text><Text style={s.statKey}>{L.my_posts}</Text></View>
+                <TouchableOpacity style={s.statCell} onPress={() => {}}>
+                  <Text style={{color:'#E8751A', fontWeight:'bold', fontSize:16}}>{myReports.length}</Text>
+                  <Text style={s.statKey}>제보</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={s.statCell} onPress={() => window.alert('메시지 기능은 준비 중입니다.')}>
                   <Text style={s.statVal}>✉️</Text><Text style={s.statKey}>메세지</Text>
                 </TouchableOpacity>
@@ -2132,6 +2141,14 @@ export default function App() {
                   {selectedPlace.price_range&&<View style={s.infoChip}><Text style={s.infoLabel}>💰 {L.price}</Text><Text style={s.infoVal}>{selectedPlace.price_range}</Text></View>}
                   <View style={[s.infoChip,{width:'100%'}]}><Text style={s.infoLabel}>📍 주소</Text><Text style={s.infoVal}>{selectedPlace.address}</Text></View>
                 </View>
+                {selectedPlace.reported_by && (
+                  <View style={{flexDirection:'row', alignItems:'center', gap:6, marginTop:8, padding:12, backgroundColor:'#fff8f0', borderRadius:8}}>
+                    <Text style={{fontSize:14}}>📌</Text>
+                    <Text style={{fontSize:13, color:'#E8751A'}}>
+                      <Text style={{fontWeight:'bold'}}>{selectedPlace.reported_by}</Text>님이 제보한 장소
+                    </Text>
+                  </View>
+                )}
                 <TouchableOpacity style={s.btnGmap} onPress={()=>openGoogleMaps(selectedPlace)}><Text style={s.btnGmapText}>🗺 {L.open_map}</Text></TouchableOpacity>
                 <Text style={s.sectionTitle}>💬 {L.review} {reviews.length}개</Text>
                 {reviews.length===0?<Text style={s.emptyReview}>첫 번째 리뷰를 남겨보세요!</Text>:reviews.map((r:any)=>(
