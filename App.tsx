@@ -645,6 +645,7 @@ export default function App() {
                 report.category === '명소' ? 'spot' :
                 report.category === '쇼핑' ? 'shopping' : 'activity',
       address: report.address,
+      photo_url: report.photo_url || null,
       rating: 0,
       emoji: report.category === '맛집' ? '🍽️' :
              report.category === '카페' ? '☕' :
@@ -652,15 +653,12 @@ export default function App() {
              report.category === '쇼핑' ? '🛍️' : '🎯',
       featured: false,
       is_open: true,
-      photo_url: report.photo_url || null,
       lat: null,
       lng: null,
     });
 
     if (!error) {
-      await supabase.from('place_reports')
-        .update({ status: 'approved' })
-        .eq('id', report.id);
+      await supabase.from('place_reports').update({ status: 'approved' }).eq('id', report.id);
 
       if (report.user_id) {
         await supabase.from('notifications').insert({
@@ -671,18 +669,23 @@ export default function App() {
           from_avatar_url: null,
         });
       }
-      await fetchPlaceReports();
-      await fetchMyReports();
+
+      setPlaceReports(prev => prev.map(r =>
+        r.id === report.id ? { ...r, status: 'approved' } : r
+      ));
+      setMyReports(prev => prev.map(r =>
+        r.id === report.id ? { ...r, status: 'approved' } : r
+      ));
       window.alert('장소가 등록됐습니다!');
+    } else {
+      window.alert('오류: ' + error.message);
     }
   };
 
   const handleRejectReport = async () => {
     if (!rejectReason.trim()) { window.alert('반려 사유를 입력해주세요.'); return; }
 
-    await supabase.from('place_reports')
-      .update({ status: 'rejected' })
-      .eq('id', rejectingReport.id);
+    await supabase.from('place_reports').update({ status: 'rejected' }).eq('id', rejectingReport.id);
 
     if (rejectingReport.user_id) {
       await supabase.from('notifications').insert({
@@ -694,11 +697,16 @@ export default function App() {
       });
     }
 
+    setPlaceReports(prev => prev.map(r =>
+      r.id === rejectingReport.id ? { ...r, status: 'rejected' } : r
+    ));
+    setMyReports(prev => prev.map(r =>
+      r.id === rejectingReport.id ? { ...r, status: 'rejected' } : r
+    ));
+
     setShowRejectModal(false);
     setRejectReason('');
     setRejectingReport(null);
-    await fetchPlaceReports();
-    await fetchMyReports();
     window.alert('반려 처리됐습니다.');
   };
 
