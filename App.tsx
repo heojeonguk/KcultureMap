@@ -2135,11 +2135,14 @@ export default function App() {
             <View style={s.detailContainer}>
               <View style={[s.detailImg,{backgroundColor:CAT_BG[selectedPlace.category]||'#f5f0e8'}]}>
                 {selectedPlace.photo_url ? (
-                  <TouchableOpacity onPress={() => setFullscreenImage(selectedPlace.photo_url)}>
-                    <Image source={{uri: selectedPlace.photo_url}} style={{width:'100%' as any, height:200, borderRadius:12}} resizeMode="cover" />
-                    <View style={{position:'absolute', bottom:8, right:8, backgroundColor:'rgba(0,0,0,0.5)', borderRadius:6, padding:4}}>
-                      <Text style={{color:'#fff', fontSize:11}}>🔍 전체보기</Text>
-                    </View>
+                  <TouchableOpacity
+                    onPress={() => setFullscreenImage(selectedPlace.photo_url)}
+                    style={{width:'100%' as any, height:200, borderRadius:12, overflow:'hidden', marginBottom:8}}>
+                    <Image
+                      source={{uri: selectedPlace.photo_url}}
+                      style={{width:'100%' as any, height:'100%' as any}}
+                      resizeMode="cover"
+                    />
                   </TouchableOpacity>
                 ) : (
                   <Text style={{fontSize:76}}>{selectedPlace.emoji}</Text>
