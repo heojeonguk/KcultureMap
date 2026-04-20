@@ -296,6 +296,8 @@ export default function App() {
   const [reportPhoto, setReportPhoto] = useState<string | null>(null)
   const [reportSubmitting, setReportSubmitting] = useState(false)
   const [myReports, setMyReports] = useState<any[]>([])
+  const [adminPlaces, setAdminPlaces] = useState<any[]>([])
+  const [adminPlaceSearch, setAdminPlaceSearch] = useState('')
   const L = LANGS[lang] || LANGS['ko']
   
   const editDeleteTexts: any = {
@@ -630,6 +632,27 @@ export default function App() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
     if (data) setMyReports(data);
+  };
+
+  const fetchAdminPlaces = async (keyword: string) => {
+    if (!keyword.trim()) { setAdminPlaces([]); return; }
+    const { data } = await supabase
+      .from('places')
+      .select('id, name, city, category, address')
+      .ilike('name', `%${keyword}%`)
+      .limit(20);
+    if (data) setAdminPlaces(data);
+  };
+
+  const handleDeletePlace = async (placeId: string, placeName: string) => {
+    if (!window.confirm(`"${placeName}" 장소를 삭제하시겠습니까?`)) return;
+    const { error } = await supabase.from('places').delete().eq('id', placeId);
+    if (!error) {
+      setAdminPlaces(prev => prev.filter(p => p.id !== placeId));
+      window.alert('삭제됐습니다.');
+    } else {
+      window.alert('삭제 오류: ' + error.message);
+    }
   };
 
   const handleApproveReport = async (report: any) => {
@@ -2089,7 +2112,11 @@ export default function App() {
           {selectedPlace&&(
             <View style={s.detailContainer}>
               <View style={[s.detailImg,{backgroundColor:CAT_BG[selectedPlace.category]||'#f5f0e8'}]}>
-                <Text style={{fontSize:76}}>{selectedPlace.emoji}</Text>
+                {selectedPlace.photo_url ? (
+                  <Image source={{uri: selectedPlace.photo_url}} style={{width:'100%' as any, height:200, borderRadius:12}} resizeMode="cover" />
+                ) : (
+                  <Text style={{fontSize:76}}>{selectedPlace.emoji}</Text>
+                )}
                 <TouchableOpacity style={s.closeBtn} onPress={()=>setSelectedPlace(null)}><Text style={{color:'#fff',fontSize:16,fontWeight:'700'}}>✕</Text></TouchableOpacity>
                 <TouchableOpacity style={[s.detailHeart,saved.includes(selectedPlace.id)&&s.heartSaved]} onPress={()=>toggleSave(selectedPlace.id)}><Text style={{color:'#fff',fontSize:18}}>♥</Text></TouchableOpacity>
               </View>
@@ -2537,6 +2564,36 @@ export default function App() {
             </View>
 
             <ScrollView style={{flex:1}}>
+              <View style={{margin:8, backgroundColor:'#fff', borderRadius:12, padding:16}}>
+                <Text style={{fontWeight:'bold', fontSize:15, marginBottom:12}}>🏪 등록된 장소 관리</Text>
+                <View style={{flexDirection:'row', gap:8, marginBottom:12}}>
+                  <TextInput
+                    value={adminPlaceSearch}
+                    onChangeText={setAdminPlaceSearch}
+                    placeholder="장소명 검색..."
+                    style={{flex:1, borderWidth:1, borderColor:'#ddd', borderRadius:8, padding:10}}
+                  />
+                  <TouchableOpacity
+                    onPress={() => fetchAdminPlaces(adminPlaceSearch)}
+                    style={{backgroundColor:'#E8751A', paddingHorizontal:16, borderRadius:8, justifyContent:'center'}}>
+                    <Text style={{color:'#fff', fontWeight:'bold'}}>검색</Text>
+                  </TouchableOpacity>
+                </View>
+                {adminPlaces.map(place => (
+                  <View key={place.id} style={{flexDirection:'row', alignItems:'center', paddingVertical:10, borderBottomWidth:1, borderBottomColor:'#f0f0f0'}}>
+                    <View style={{flex:1}}>
+                      <Text style={{fontWeight:'bold', fontSize:13}}>{place.name}</Text>
+                      <Text style={{color:'#888', fontSize:11}}>{place.city} · {place.category}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleDeletePlace(place.id, place.name)}
+                      style={{backgroundColor:'#fff0f0', paddingHorizontal:12, paddingVertical:6, borderRadius:8}}>
+                      <Text style={{color:'#c62828', fontSize:12, fontWeight:'bold'}}>삭제</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
               <Text style={{padding:16, fontWeight:'bold', fontSize:16}}>
                 📌 장소 제보 목록 ({placeReports.length}건)
               </Text>
