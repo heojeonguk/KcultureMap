@@ -295,6 +295,7 @@ export default function App() {
   const [reportDescription, setReportDescription] = useState('')
   const [reportPhoto, setReportPhoto] = useState<string | null>(null)
   const [reportSubmitting, setReportSubmitting] = useState(false)
+  const [myReports, setMyReports] = useState<any[]>([])
   const L = LANGS[lang] || LANGS['ko']
   
   const editDeleteTexts: any = {
@@ -344,6 +345,7 @@ export default function App() {
     loadSavedPlaces();
     fetchNotifications();
     checkIsAdmin();
+    fetchMyReports();
   }, [user])
   useEffect(() => { loadPlaces() }, [selectedRegion.id, selectedDistrict, selectedCat, searchText])
   useEffect(() => { if(tab==='community') loadPosts() }, [tab, postFilter])
@@ -576,6 +578,18 @@ export default function App() {
     });
     setReportSubmitting(false);
     if (!error) {
+      const { data: adminData } = await supabase.from('admins').select('user_id');
+      if (adminData) {
+        for (const admin of adminData) {
+          await supabase.from('notifications').insert({
+            user_id: admin.user_id,
+            type: 'comment',
+            message: `📌 새 장소 제보: "${reportName.trim()}" (${reportCity} · ${reportCategory})`,
+            from_user_name: user?.user_metadata?.nickname || '익명',
+            from_avatar_url: user?.user_metadata?.avatar_url || null,
+          });
+        }
+      }
       window.alert('장소 제보가 완료됐습니다! 검토 후 등록해드릴게요 😊');
       setShowPlaceReport(false);
       setReportName('');
@@ -600,11 +614,22 @@ export default function App() {
   };
 
   const fetchPlaceReports = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('place_reports')
       .select('*')
       .order('created_at', { ascending: false });
     if (data) setPlaceReports(data);
+    if (error) console.log('fetchPlaceReports error:', error);
+  };
+
+  const fetchMyReports = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('place_reports')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    if (data) setMyReports(data);
   };
 
   const handleApproveReport = async (report: any) => {
@@ -1678,6 +1703,25 @@ export default function App() {
                   )}
                 </View>
               ))}
+              {myReports.length > 0 && (
+                <View style={{marginTop:24}}>
+                  <Text style={{fontSize:16, fontWeight:'bold', marginBottom:12}}>📌 내 장소 제보</Text>
+                  {myReports.map(report => (
+                    <View key={report.id} style={{backgroundColor:'#fff', borderRadius:12, padding:16, marginBottom:8, borderWidth:1, borderColor:'#f0f0f0'}}>
+                      <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6}}>
+                        <Text style={{fontWeight:'bold', fontSize:14}}>{report.name}</Text>
+                        <View style={{backgroundColor: report.status === 'pending' ? '#fff8f0' : report.status === 'approved' ? '#f0fff0' : '#fff0f0', paddingHorizontal:8, paddingVertical:4, borderRadius:8}}>
+                          <Text style={{fontSize:12, color: report.status === 'pending' ? '#E8751A' : report.status === 'approved' ? '#2e7d32' : '#c62828'}}>
+                            {report.status === 'pending' ? '⏳ 검토중' : report.status === 'approved' ? '✅ 등록완료' : '❌ 반려'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={{color:'#888', fontSize:12}}>{report.category} · {report.city}</Text>
+                      <Text style={{color:'#aaa', fontSize:11, marginTop:4}}>{new Date(report.created_at).toLocaleDateString('ko-KR')}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               <View style={{padding:16, alignItems:'center', gap:8, marginTop:20, borderTopWidth:1, borderTopColor:'#eee'}}>
                 <TouchableOpacity onPress={()=>setShowTermsModal(true)}>
                   <Text style={{fontSize:12, color:'#999', textDecorationLine:'underline'}}>이용약관</Text>
