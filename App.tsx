@@ -1010,6 +1010,15 @@ export default function App() {
     return { emoji: '✈️', name: '입문 여행자', level: 1 };
   };
 
+  const getLevelProgress = (postCount: number, reviewCount: number, followerCount: number) => {
+    const level = getUserLevel(postCount, reviewCount, followerCount).level;
+    if (level === 1) return { current: postCount, target: 10, label: '게시글', percent: Math.min((postCount / 10) * 100, 100), nextLevel: '탐험가 🗺️' };
+    if (level === 2) return { current: postCount, target: 100, label: '게시글', percent: Math.min((postCount / 100) * 100, 100), nextLevel: 'K컬처 러버 🏅' };
+    if (level === 3) return { current: postCount, target: 500, label: '게시글', percent: Math.min((postCount / 500) * 100, 100), nextLevel: 'K컬처 마스터 🌟' };
+    if (level === 4) return { current: postCount, target: 1000, label: '게시글', percent: Math.min((postCount / 1000) * 100, 100), nextLevel: 'K컬처 레전드 👑' };
+    return { current: postCount, target: 1000, label: '게시글', percent: 100, nextLevel: '최고 레벨 달성! 👑' };
+  };
+
   async function submitPost() {
     if(!user) { setShowAuthModal(true); return }
     if(!postTitle.trim()) { window.alert('제목을 입력해주세요'); return }
@@ -1553,6 +1562,37 @@ export default function App() {
                 <Text style={{fontSize:20}}>{getUserLevel(myPosts.length, myReviews.length, followStats.followers).emoji}</Text>
               </View>
               <Text style={{color:'#aaa', fontSize:13, marginTop:2}}>{getUserLevel(myPosts.length, myReviews.length, followStats.followers).name}</Text>
+              {(() => {
+                const progress = getLevelProgress(myPosts.length, myReviews.length, followStats.followers);
+                const level = getUserLevel(myPosts.length, myReviews.length, followStats.followers).level;
+                return (
+                  <View style={{paddingHorizontal:24, marginTop:12, width:'100%'}}>
+                    <View style={{flexDirection:'row', justifyContent:'space-between', marginBottom:4}}>
+                      <Text style={{color:'#aaa', fontSize:11}}>
+                        {level < 5 ? `다음 레벨: ${progress.nextLevel}` : '🎉 최고 레벨 달성!'}
+                      </Text>
+                      <Text style={{color:'#E8751A', fontSize:11, fontWeight:'bold'}}>
+                        {level < 5 ? `${progress.current} / ${progress.target} ${progress.label}` : 'MAX'}
+                      </Text>
+                    </View>
+                    <View style={{height:6, backgroundColor:'#333', borderRadius:3, overflow:'hidden'}}>
+                      <View style={{
+                        height:'100%' as any,
+                        width:`${progress.percent}%` as any,
+                        backgroundColor:'#E8751A',
+                        borderRadius:3
+                      }} />
+                    </View>
+                    {level < 5 && (
+                      <Text style={{color:'#666', fontSize:10, marginTop:4, textAlign:'center'}}>
+                        {progress.target - progress.current > 0
+                          ? `${progress.target - progress.current}개 더 작성하면 레벨업!`
+                          : '레벨업 조건 달성! 🎉'}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })()}
               {editingBio ? (
                 <View style={{flexDirection:'row', alignItems:'center', gap:8, marginTop:8, paddingHorizontal:24}}>
                   <TextInput
