@@ -1124,7 +1124,7 @@ export default function App() {
     const placeIds = savedData.map((d:any) => d.place_id);
     const { data: placesData } = await supabase
       .from('places')
-      .select('id, name, lat, lng, city, category, emoji')
+      .select('id, name, lat, lng, city, category, emoji, photo_url, reported_by')
       .in('id', placeIds);
     if (placesData) setSavedPlacesData(placesData);
   };
