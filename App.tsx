@@ -8,7 +8,6 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { createClient } from '@supabase/supabase-js'
-import { WebView } from 'react-native-webview'
 
 const supabase = createClient(
   'https://zmukgjwdrorgprxzqlka.supabase.co',
