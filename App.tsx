@@ -309,6 +309,8 @@ export default function App() {
   const [conversationTarget, setConversationTarget] = useState<{userId: string, nickname: string, avatarUrl: string | null} | null>(null)
   const [conversationMessages, setConversationMessages] = useState<any[]>([])
   const [replyContent, setReplyContent] = useState('')
+  const [messagePhoto, setMessagePhoto] = useState<string | null>(null)
+  const [replyPhoto, setReplyPhoto] = useState<string | null>(null)
   const [adminPlaces, setAdminPlaces] = useState<any[]>([])
   const [adminPlaceSearch, setAdminPlaceSearch] = useState('')
   const L = LANGS[lang] || LANGS['ko']
@@ -670,6 +672,7 @@ export default function App() {
       sender_name: user.user_metadata?.nickname || '익명',
       sender_avatar_url: user.user_metadata?.avatar_url || null,
       content: messageContent.trim(),
+      photo_url: messagePhoto || null,
     });
     if (!error) {
       await supabase.from('notifications').insert({
@@ -680,6 +683,7 @@ export default function App() {
         from_avatar_url: user.user_metadata?.avatar_url || null,
       });
       setMessageContent('');
+      setMessagePhoto(null);
       setShowMessageModal(false);
       window.alert('메시지를 전송했습니다!');
     } else {
@@ -746,6 +750,7 @@ export default function App() {
       sender_name: user.user_metadata?.nickname || '익명',
       sender_avatar_url: user.user_metadata?.avatar_url || null,
       content: replyContent.trim(),
+      photo_url: replyPhoto || null,
     });
     if (!error) {
       await supabase.from('notifications').insert({
@@ -756,8 +761,28 @@ export default function App() {
         from_avatar_url: user.user_metadata?.avatar_url || null,
       });
       setReplyContent('');
+      setReplyPhoto(null);
       fetchConversation(conversationTarget.userId, conversationTarget.nickname, conversationTarget.avatarUrl);
     }
+  };
+
+  const handleMessagePhotoUpload = async (setPhoto: (url: string) => void) => {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const ext = file.name.split('.').pop();
+      const filePath = `messages/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('community-photos').upload(filePath, file);
+      if (!error) {
+        const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+        setPhoto(data.publicUrl);
+      }
+    };
+    input.click();
   };
 
   const fetchAdminPlaces = async (keyword: string) => {
@@ -2966,6 +2991,21 @@ export default function App() {
                   <Text style={{fontSize:18}}>✕</Text>
                 </TouchableOpacity>
               </View>
+              <TouchableOpacity
+                onPress={() => handleMessagePhotoUpload(setMessagePhoto)}
+                style={{flexDirection:'row', alignItems:'center', gap:6, marginBottom:8}}>
+                <Text style={{fontSize:18}}>📷</Text>
+                <Text style={{color:'#E8751A', fontSize:13}}>사진 첨부</Text>
+              </TouchableOpacity>
+              {messagePhoto && (
+                <View style={{marginBottom:8}}>
+                  <Image source={{uri: messagePhoto}} style={{width:'100%' as any, height:150, borderRadius:8}} resizeMode="cover" />
+                  <TouchableOpacity onPress={() => setMessagePhoto(null)}
+                    style={{position:'absolute' as any, top:4, right:4, backgroundColor:'rgba(0,0,0,0.5)', borderRadius:10, padding:4}}>
+                    <Text style={{color:'#fff', fontSize:12}}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               <TextInput
                 value={messageContent}
                 onChangeText={setMessageContent}
@@ -3044,14 +3084,22 @@ export default function App() {
               <TouchableOpacity onPress={() => setShowConversation(false)}>
                 <Text style={{color:'#fff', fontSize:18}}>←</Text>
               </TouchableOpacity>
-              {conversationTarget.avatarUrl ? (
-                <Image source={{uri: conversationTarget.avatarUrl}} style={{width:36, height:36, borderRadius:18}} />
-              ) : (
-                <View style={{width:36, height:36, borderRadius:18, backgroundColor:'#E8751A', alignItems:'center', justifyContent:'center'}}>
-                  <Text style={{color:'#fff', fontWeight:'bold'}}>{conversationTarget.nickname?.[0]}</Text>
-                </View>
-              )}
-              <Text style={{color:'#fff', fontSize:16, fontWeight:'bold'}}>{conversationTarget.nickname}</Text>
+              <TouchableOpacity
+                style={{flexDirection:'row', alignItems:'center', gap:12, flex:1}}
+                onPress={() => {
+                  if (conversationTarget) {
+                    setNicknameMenu({visible:true, userId:conversationTarget.userId, nickname:conversationTarget.nickname, x:0, y:0});
+                  }
+                }}>
+                {conversationTarget.avatarUrl ? (
+                  <Image source={{uri: conversationTarget.avatarUrl}} style={{width:36, height:36, borderRadius:18}} />
+                ) : (
+                  <View style={{width:36, height:36, borderRadius:18, backgroundColor:'#E8751A', alignItems:'center', justifyContent:'center'}}>
+                    <Text style={{color:'#fff', fontWeight:'bold'}}>{conversationTarget.nickname?.[0]}</Text>
+                  </View>
+                )}
+                <Text style={{color:'#fff', fontSize:16, fontWeight:'bold'}}>{conversationTarget.nickname}</Text>
+              </TouchableOpacity>
             </View>
 
             <ScrollView style={{flex:1, padding:16}}>
@@ -3070,6 +3118,11 @@ export default function App() {
                       shadowOpacity:0.05,
                       shadowRadius:4,
                     }}>
+                      {msg.photo_url && (
+                        <TouchableOpacity onPress={() => setFullscreenImage(msg.photo_url)}>
+                          <Image source={{uri: msg.photo_url}} style={{width:200, height:150, borderRadius:8, marginBottom:6}} resizeMode="cover" />
+                        </TouchableOpacity>
+                      )}
                       <Text style={{color: isMine ? '#fff' : '#333', fontSize:14, lineHeight:20}}>{msg.content}</Text>
                       <Text style={{color: isMine ? 'rgba(255,255,255,0.7)' : '#aaa', fontSize:10, marginTop:4, textAlign: isMine ? 'right' : 'left'}}>
                         {new Date(msg.created_at).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'})}
@@ -3080,19 +3133,37 @@ export default function App() {
               })}
             </ScrollView>
 
-            <View style={{flexDirection:'row', padding:12, backgroundColor:'#fff', gap:8, alignItems:'flex-end'}}>
-              <TextInput
-                value={replyContent}
-                onChangeText={setReplyContent}
-                placeholder="메시지 입력..."
-                multiline
-                style={{flex:1, borderWidth:1, borderColor:'#ddd', borderRadius:20, paddingHorizontal:16, paddingVertical:8, maxHeight:100, fontSize:14}}
-              />
-              <TouchableOpacity
-                onPress={handleSendReply}
-                style={{backgroundColor:'#E8751A', width:40, height:40, borderRadius:20, alignItems:'center', justifyContent:'center'}}>
-                <Text style={{color:'#fff', fontSize:18}}>↑</Text>
-              </TouchableOpacity>
+            <View style={{backgroundColor:'#fff'}}>
+              {replyPhoto && (
+                <View style={{paddingHorizontal:12, paddingBottom:4}}>
+                  <View>
+                    <Image source={{uri: replyPhoto}} style={{width:80, height:80, borderRadius:8}} resizeMode="cover" />
+                    <TouchableOpacity onPress={() => setReplyPhoto(null)}
+                      style={{position:'absolute' as any, top:-6, right:-6, backgroundColor:'#E8751A', borderRadius:10, width:20, height:20, alignItems:'center', justifyContent:'center'}}>
+                      <Text style={{color:'#fff', fontSize:11}}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              <View style={{flexDirection:'row', padding:12, gap:8, alignItems:'flex-end'}}>
+                <TouchableOpacity
+                  onPress={() => handleMessagePhotoUpload(setReplyPhoto)}
+                  style={{width:40, height:40, borderRadius:20, backgroundColor:'#f0f0f0', alignItems:'center', justifyContent:'center'}}>
+                  <Text style={{fontSize:18}}>📷</Text>
+                </TouchableOpacity>
+                <TextInput
+                  value={replyContent}
+                  onChangeText={setReplyContent}
+                  placeholder="메시지 입력..."
+                  multiline
+                  style={{flex:1, borderWidth:1, borderColor:'#ddd', borderRadius:20, paddingHorizontal:16, paddingVertical:8, maxHeight:100, fontSize:14}}
+                />
+                <TouchableOpacity
+                  onPress={handleSendReply}
+                  style={{backgroundColor:'#E8751A', width:40, height:40, borderRadius:20, alignItems:'center', justifyContent:'center'}}>
+                  <Text style={{color:'#fff', fontSize:18}}>↑</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
