@@ -2982,7 +2982,10 @@ export default function App() {
                       style={{padding:16, borderBottomWidth:1, borderBottomColor:'#f0f0f0'}}
                       onPress={async () => {
                         setShowUserPosts(false);
-                        await new Promise(resolve => setTimeout(resolve, 300));
+                        setNicknameMenu({visible:false, userId:'', nickname:'', x:0, y:0});
+                        setShowConversation(false);
+                        setShowMyMessages(false);
+                        await new Promise(resolve => setTimeout(resolve, 400));
                         let fullPost = posts.find((p: any) => String(p.id) === String(post.id));
                         if (!fullPost) {
                           const { data } = await supabase
