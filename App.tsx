@@ -296,6 +296,15 @@ export default function App() {
   const [reportPhoto, setReportPhoto] = useState<string | null>(null)
   const [reportSubmitting, setReportSubmitting] = useState(false)
   const [myReports, setMyReports] = useState<any[]>([])
+  const [showUserPosts, setShowUserPosts] = useState(false)
+  const [userPostsList, setUserPostsList] = useState<any[]>([])
+  const [userPostsTarget, setUserPostsTarget] = useState<{userId: string, nickname: string} | null>(null)
+  const [showMessageModal, setShowMessageModal] = useState(false)
+  const [messageTarget, setMessageTarget] = useState<{userId: string, nickname: string} | null>(null)
+  const [messageContent, setMessageContent] = useState('')
+  const [messageSending, setMessageSending] = useState(false)
+  const [showMyMessages, setShowMyMessages] = useState(false)
+  const [myMessages, setMyMessages] = useState<any[]>([])
   const [adminPlaces, setAdminPlaces] = useState<any[]>([])
   const [adminPlaceSearch, setAdminPlaceSearch] = useState('')
   const L = LANGS[lang] || LANGS['ko']
@@ -632,6 +641,57 @@ export default function App() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
     if (data) setMyReports(data);
+  };
+
+  const fetchUserPosts = async (userId: string, nickname: string) => {
+    const { data } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (data) {
+      setUserPostsList(data);
+      setUserPostsTarget({ userId, nickname });
+      setShowUserPosts(true);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageContent.trim()) { window.alert('메시지를 입력해주세요.'); return; }
+    if (!user || !messageTarget) return;
+    setMessageSending(true);
+    const { error } = await supabase.from('messages').insert({
+      sender_id: user.id,
+      receiver_id: messageTarget.userId,
+      sender_name: user.user_metadata?.nickname || '익명',
+      sender_avatar_url: user.user_metadata?.avatar_url || null,
+      content: messageContent.trim(),
+    });
+    if (!error) {
+      await supabase.from('notifications').insert({
+        user_id: messageTarget.userId,
+        type: 'message',
+        message: `✉️ ${user.user_metadata?.nickname || '누군가'}님이 메시지를 보냈습니다: "${messageContent.trim().slice(0, 30)}${messageContent.trim().length > 30 ? '...' : ''}"`,
+        from_user_name: user.user_metadata?.nickname || '익명',
+        from_avatar_url: user.user_metadata?.avatar_url || null,
+      });
+      setMessageContent('');
+      setShowMessageModal(false);
+      window.alert('메시지를 전송했습니다!');
+    } else {
+      window.alert('전송 오류: ' + error.message);
+    }
+    setMessageSending(false);
+  };
+
+  const fetchMyMessages = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('receiver_id', user.id)
+      .order('created_at', { ascending: false });
+    if (data) setMyMessages(data);
   };
 
   const fetchAdminPlaces = async (keyword: string) => {
@@ -1643,7 +1703,7 @@ export default function App() {
                   <Text style={{color:'#E8751A', fontWeight:'bold', fontSize:16}}>{myReports.length}</Text>
                   <Text style={s.statKey}>제보</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.statCell} onPress={() => window.alert('메시지 기능은 준비 중입니다.')}>
+                <TouchableOpacity style={s.statCell} onPress={() => { fetchMyMessages(); setShowMyMessages(true); }}>
                   <Text style={s.statVal}>✉️</Text><Text style={s.statKey}>메세지</Text>
                 </TouchableOpacity>
               </View>
@@ -2512,8 +2572,8 @@ export default function App() {
               <TouchableOpacity
                 style={{padding:16, borderBottomWidth:1, borderBottomColor:'#eee', flexDirection:'row', alignItems:'center', gap:12}}
                 onPress={() => {
+                  fetchUserPosts(nicknameMenu.userId, nicknameMenu.nickname);
                   setNicknameMenu({visible:false, userId:'', nickname:'', x:0, y:0});
-                  window.alert('게시글 보기 기능은 준비 중입니다.');
                 }}>
                 <Text style={{fontSize:18}}>📝</Text>
                 <Text style={{fontSize:15}}>게시글 보기</Text>
@@ -2522,7 +2582,9 @@ export default function App() {
                 style={{padding:16, flexDirection:'row', alignItems:'center', gap:12}}
                 onPress={() => {
                   setNicknameMenu({visible:false, userId:'', nickname:'', x:0, y:0});
-                  window.alert('메시지 기능은 준비 중입니다.');
+                  if (!user) { window.alert('로그인이 필요합니다.'); return; }
+                  setMessageTarget({userId: nicknameMenu.userId, nickname: nicknameMenu.nickname});
+                  setShowMessageModal(true);
                 }}>
                 <Text style={{fontSize:18}}>✉️</Text>
                 <Text style={{fontSize:15}}>메시지 보내기</Text>
@@ -2788,6 +2850,118 @@ export default function App() {
                 </TouchableOpacity>
               </View>
             </View>
+          </View>
+        </Modal>
+      )}
+
+      {showUserPosts && (
+        <Modal transparent animationType="slide" visible={showUserPosts}>
+          <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.5)'}}>
+            <View style={{flex:1, backgroundColor:'#fff', marginTop:60, borderTopLeftRadius:20, borderTopRightRadius:20}}>
+              <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:20, borderBottomWidth:1, borderBottomColor:'#eee'}}>
+                <Text style={{fontSize:18, fontWeight:'bold'}}>📝 {userPostsTarget?.nickname}님의 게시글</Text>
+                <TouchableOpacity onPress={() => setShowUserPosts(false)}>
+                  <Text style={{fontSize:18}}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView>
+                {userPostsList.length === 0 ? (
+                  <View style={{padding:40, alignItems:'center'}}>
+                    <Text style={{color:'#aaa'}}>작성한 게시글이 없습니다</Text>
+                  </View>
+                ) : (
+                  userPostsList.map(post => (
+                    <TouchableOpacity
+                      key={post.id}
+                      style={{padding:16, borderBottomWidth:1, borderBottomColor:'#f0f0f0'}}
+                      onPress={() => { setShowUserPosts(false); setSelectedPost(post); }}>
+                      <Text style={{fontWeight:'bold', fontSize:14, marginBottom:4}}>{post.title}</Text>
+                      <Text style={{color:'#888', fontSize:12}} numberOfLines={2}>{post.content}</Text>
+                      <View style={{flexDirection:'row', justifyContent:'space-between', marginTop:8}}>
+                        <Text style={{color:'#aaa', fontSize:11}}>{post.city || '전체'} · {post.category}</Text>
+                        <Text style={{color:'#aaa', fontSize:11}}>🔥 {post.likes}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {showMessageModal && (
+        <Modal transparent animationType="slide" visible={showMessageModal}>
+          <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.5)', justifyContent:'flex-end'}}>
+            <View style={{backgroundColor:'#fff', borderTopLeftRadius:20, borderTopRightRadius:20, padding:24}}>
+              <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
+                <Text style={{fontSize:16, fontWeight:'bold'}}>✉️ {messageTarget?.nickname}님께 메시지</Text>
+                <TouchableOpacity onPress={() => { setShowMessageModal(false); setMessageContent(''); }}>
+                  <Text style={{fontSize:18}}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                value={messageContent}
+                onChangeText={setMessageContent}
+                placeholder="메시지를 입력하세요..."
+                multiline
+                numberOfLines={4}
+                style={{borderWidth:1, borderColor:'#ddd', borderRadius:12, padding:12, height:120, textAlignVertical:'top', marginBottom:16}}
+                maxLength={500}
+              />
+              <Text style={{color:'#aaa', fontSize:11, textAlign:'right', marginBottom:12}}>{messageContent.length}/500</Text>
+              <TouchableOpacity
+                onPress={handleSendMessage}
+                disabled={messageSending}
+                style={{backgroundColor:'#E8751A', padding:14, borderRadius:12, alignItems:'center'}}>
+                <Text style={{color:'#fff', fontWeight:'bold', fontSize:16}}>
+                  {messageSending ? '전송 중...' : '✉️ 메시지 보내기'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {showMyMessages && (
+        <Modal transparent animationType="slide" visible={showMyMessages}>
+          <View style={{flex:1, backgroundColor:'#fff'}}>
+            <View style={{backgroundColor:'#1a1a2e', padding:20, paddingTop:60, flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
+              <Text style={{color:'#fff', fontSize:18, fontWeight:'bold'}}>✉️ 받은 메시지</Text>
+              <TouchableOpacity onPress={() => setShowMyMessages(false)}>
+                <Text style={{color:'#fff', fontSize:18}}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {myMessages.length === 0 ? (
+                <View style={{padding:40, alignItems:'center'}}>
+                  <Text style={{fontSize:40, marginBottom:12}}>✉️</Text>
+                  <Text style={{color:'#aaa'}}>받은 메시지가 없습니다</Text>
+                </View>
+              ) : (
+                myMessages.map(msg => (
+                  <View key={msg.id} style={{padding:16, borderBottomWidth:1, borderBottomColor:'#f0f0f0', backgroundColor: msg.is_read ? '#fff' : '#fff8f0'}}>
+                    <View style={{flexDirection:'row', alignItems:'center', gap:10, marginBottom:8}}>
+                      {msg.sender_avatar_url ? (
+                        <Image source={{uri: msg.sender_avatar_url}} style={{width:36, height:36, borderRadius:18}} />
+                      ) : (
+                        <View style={{width:36, height:36, borderRadius:18, backgroundColor:'#E8751A', alignItems:'center', justifyContent:'center'}}>
+                          <Text style={{color:'#fff', fontWeight:'bold'}}>{msg.sender_name?.[0]}</Text>
+                        </View>
+                      )}
+                      <View style={{flex:1}}>
+                        <Text style={{fontWeight:'bold', fontSize:14}}>{msg.sender_name}</Text>
+                        <Text style={{color:'#aaa', fontSize:11}}>{new Date(msg.created_at).toLocaleDateString('ko-KR')}</Text>
+                      </View>
+                      {!msg.is_read && (
+                        <View style={{width:8, height:8, borderRadius:4, backgroundColor:'#E8751A'}} />
+                      )}
+                    </View>
+                    <Text style={{fontSize:14, lineHeight:20, color:'#333'}}>{msg.content}</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
           </View>
         </Modal>
       )}
