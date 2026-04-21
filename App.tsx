@@ -305,6 +305,10 @@ export default function App() {
   const [messageSending, setMessageSending] = useState(false)
   const [showMyMessages, setShowMyMessages] = useState(false)
   const [myMessages, setMyMessages] = useState<any[]>([])
+  const [showConversation, setShowConversation] = useState(false)
+  const [conversationTarget, setConversationTarget] = useState<{userId: string, nickname: string, avatarUrl: string | null} | null>(null)
+  const [conversationMessages, setConversationMessages] = useState<any[]>([])
+  const [replyContent, setReplyContent] = useState('')
   const [adminPlaces, setAdminPlaces] = useState<any[]>([])
   const [adminPlaceSearch, setAdminPlaceSearch] = useState('')
   const L = LANGS[lang] || LANGS['ko']
@@ -689,9 +693,71 @@ export default function App() {
     const { data } = await supabase
       .from('messages')
       .select('*')
-      .eq('receiver_id', user.id)
+      .or(`receiver_id.eq.${user.id},sender_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
-    if (data) setMyMessages(data);
+    if (data) {
+      const conversations: { [key: string]: any } = {};
+      data.forEach(msg => {
+        const otherId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
+        const otherName = msg.sender_id === user.id ? msg.receiver_name || '상대방' : msg.sender_name;
+        const otherAvatar = msg.sender_id === user.id ? msg.receiver_avatar_url : msg.sender_avatar_url;
+        if (!conversations[otherId]) {
+          conversations[otherId] = {
+            userId: otherId,
+            nickname: otherName,
+            avatarUrl: otherAvatar,
+            lastMessage: msg.content,
+            lastTime: msg.created_at,
+            unread: 0,
+          };
+        }
+        if (msg.receiver_id === user.id && !msg.is_read) {
+          conversations[otherId].unread++;
+        }
+      });
+      setMyMessages(Object.values(conversations));
+    }
+  };
+
+  const fetchConversation = async (targetUserId: string, targetNickname: string, targetAvatar: string | null) => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${user.id})`)
+      .order('created_at', { ascending: true });
+    if (data) {
+      setConversationMessages(data);
+      setConversationTarget({ userId: targetUserId, nickname: targetNickname, avatarUrl: targetAvatar });
+      setShowConversation(true);
+      await supabase.from('messages')
+        .update({ is_read: true })
+        .eq('sender_id', targetUserId)
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!replyContent.trim() || !user || !conversationTarget) return;
+    const { error } = await supabase.from('messages').insert({
+      sender_id: user.id,
+      receiver_id: conversationTarget.userId,
+      sender_name: user.user_metadata?.nickname || '익명',
+      sender_avatar_url: user.user_metadata?.avatar_url || null,
+      content: replyContent.trim(),
+    });
+    if (!error) {
+      await supabase.from('notifications').insert({
+        user_id: conversationTarget.userId,
+        type: 'message',
+        message: `✉️ ${user.user_metadata?.nickname || '누군가'}님이 메시지를 보냈습니다: "${replyContent.trim().slice(0, 30)}..."`,
+        from_user_name: user.user_metadata?.nickname || '익명',
+        from_avatar_url: user.user_metadata?.avatar_url || null,
+      });
+      setReplyContent('');
+      fetchConversation(conversationTarget.userId, conversationTarget.nickname, conversationTarget.avatarUrl);
+    }
   };
 
   const fetchAdminPlaces = async (keyword: string) => {
@@ -2927,7 +2993,7 @@ export default function App() {
         <Modal transparent animationType="slide" visible={showMyMessages}>
           <View style={{flex:1, backgroundColor:'#fff'}}>
             <View style={{backgroundColor:'#1a1a2e', padding:20, paddingTop:60, flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
-              <Text style={{color:'#fff', fontSize:18, fontWeight:'bold'}}>✉️ 받은 메시지</Text>
+              <Text style={{color:'#fff', fontSize:18, fontWeight:'bold'}}>✉️ 메시지</Text>
               <TouchableOpacity onPress={() => setShowMyMessages(false)}>
                 <Text style={{color:'#fff', fontSize:18}}>✕</Text>
               </TouchableOpacity>
@@ -2936,32 +3002,98 @@ export default function App() {
               {myMessages.length === 0 ? (
                 <View style={{padding:40, alignItems:'center'}}>
                   <Text style={{fontSize:40, marginBottom:12}}>✉️</Text>
-                  <Text style={{color:'#aaa'}}>받은 메시지가 없습니다</Text>
+                  <Text style={{color:'#aaa'}}>메시지가 없습니다</Text>
                 </View>
               ) : (
-                myMessages.map(msg => (
-                  <View key={msg.id} style={{padding:16, borderBottomWidth:1, borderBottomColor:'#f0f0f0', backgroundColor: msg.is_read ? '#fff' : '#fff8f0'}}>
-                    <View style={{flexDirection:'row', alignItems:'center', gap:10, marginBottom:8}}>
-                      {msg.sender_avatar_url ? (
-                        <Image source={{uri: msg.sender_avatar_url}} style={{width:36, height:36, borderRadius:18}} />
-                      ) : (
-                        <View style={{width:36, height:36, borderRadius:18, backgroundColor:'#E8751A', alignItems:'center', justifyContent:'center'}}>
-                          <Text style={{color:'#fff', fontWeight:'bold'}}>{msg.sender_name?.[0]}</Text>
-                        </View>
-                      )}
-                      <View style={{flex:1}}>
-                        <Text style={{fontWeight:'bold', fontSize:14}}>{msg.sender_name}</Text>
-                        <Text style={{color:'#aaa', fontSize:11}}>{new Date(msg.created_at).toLocaleDateString('ko-KR')}</Text>
+                myMessages.map((conv: any) => (
+                  <TouchableOpacity
+                    key={conv.userId}
+                    onPress={() => fetchConversation(conv.userId, conv.nickname, conv.avatarUrl)}
+                    style={{flexDirection:'row', padding:16, borderBottomWidth:1, borderBottomColor:'#f0f0f0', alignItems:'center', gap:12}}>
+                    {conv.avatarUrl ? (
+                      <Image source={{uri: conv.avatarUrl}} style={{width:48, height:48, borderRadius:24}} />
+                    ) : (
+                      <View style={{width:48, height:48, borderRadius:24, backgroundColor:'#E8751A', alignItems:'center', justifyContent:'center'}}>
+                        <Text style={{color:'#fff', fontWeight:'bold', fontSize:18}}>{conv.nickname?.[0]}</Text>
                       </View>
-                      {!msg.is_read && (
-                        <View style={{width:8, height:8, borderRadius:4, backgroundColor:'#E8751A'}} />
-                      )}
+                    )}
+                    <View style={{flex:1}}>
+                      <View style={{flexDirection:'row', justifyContent:'space-between'}}>
+                        <Text style={{fontWeight:'bold', fontSize:15}}>{conv.nickname}</Text>
+                        <Text style={{color:'#aaa', fontSize:11}}>{new Date(conv.lastTime).toLocaleDateString('ko-KR')}</Text>
+                      </View>
+                      <Text style={{color:'#888', fontSize:13, marginTop:2}} numberOfLines={1}>{conv.lastMessage}</Text>
                     </View>
-                    <Text style={{fontSize:14, lineHeight:20, color:'#333'}}>{msg.content}</Text>
-                  </View>
+                    {conv.unread > 0 && (
+                      <View style={{backgroundColor:'#E8751A', borderRadius:10, minWidth:20, height:20, alignItems:'center', justifyContent:'center'}}>
+                        <Text style={{color:'#fff', fontSize:11, fontWeight:'bold'}}>{conv.unread}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
                 ))
               )}
             </ScrollView>
+          </View>
+        </Modal>
+      )}
+
+      {showConversation && conversationTarget && (
+        <Modal transparent animationType="slide" visible={showConversation}>
+          <View style={{flex:1, backgroundColor:'#f5f5f5'}}>
+            <View style={{backgroundColor:'#1a1a2e', padding:20, paddingTop:60, flexDirection:'row', alignItems:'center', gap:12}}>
+              <TouchableOpacity onPress={() => setShowConversation(false)}>
+                <Text style={{color:'#fff', fontSize:18}}>←</Text>
+              </TouchableOpacity>
+              {conversationTarget.avatarUrl ? (
+                <Image source={{uri: conversationTarget.avatarUrl}} style={{width:36, height:36, borderRadius:18}} />
+              ) : (
+                <View style={{width:36, height:36, borderRadius:18, backgroundColor:'#E8751A', alignItems:'center', justifyContent:'center'}}>
+                  <Text style={{color:'#fff', fontWeight:'bold'}}>{conversationTarget.nickname?.[0]}</Text>
+                </View>
+              )}
+              <Text style={{color:'#fff', fontSize:16, fontWeight:'bold'}}>{conversationTarget.nickname}</Text>
+            </View>
+
+            <ScrollView style={{flex:1, padding:16}}>
+              {conversationMessages.map(msg => {
+                const isMine = msg.sender_id === user?.id;
+                return (
+                  <View key={msg.id} style={{flexDirection:'row', justifyContent: isMine ? 'flex-end' : 'flex-start', marginBottom:12}}>
+                    <View style={{
+                      maxWidth:'75%' as any,
+                      backgroundColor: isMine ? '#E8751A' : '#fff',
+                      borderRadius:16,
+                      borderBottomRightRadius: isMine ? 4 : 16,
+                      borderBottomLeftRadius: isMine ? 16 : 4,
+                      padding:12,
+                      shadowColor:'#000',
+                      shadowOpacity:0.05,
+                      shadowRadius:4,
+                    }}>
+                      <Text style={{color: isMine ? '#fff' : '#333', fontSize:14, lineHeight:20}}>{msg.content}</Text>
+                      <Text style={{color: isMine ? 'rgba(255,255,255,0.7)' : '#aaa', fontSize:10, marginTop:4, textAlign: isMine ? 'right' : 'left'}}>
+                        {new Date(msg.created_at).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'})}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <View style={{flexDirection:'row', padding:12, backgroundColor:'#fff', gap:8, alignItems:'flex-end'}}>
+              <TextInput
+                value={replyContent}
+                onChangeText={setReplyContent}
+                placeholder="메시지 입력..."
+                multiline
+                style={{flex:1, borderWidth:1, borderColor:'#ddd', borderRadius:20, paddingHorizontal:16, paddingVertical:8, maxHeight:100, fontSize:14}}
+              />
+              <TouchableOpacity
+                onPress={handleSendReply}
+                style={{backgroundColor:'#E8751A', width:40, height:40, borderRadius:20, alignItems:'center', justifyContent:'center'}}>
+                <Text style={{color:'#fff', fontSize:18}}>↑</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Modal>
       )}
