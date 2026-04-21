@@ -666,6 +666,12 @@ export default function App() {
     if (!messageContent.trim()) { window.alert('메시지를 입력해주세요.'); return; }
     if (!user || !messageTarget) return;
     setMessageSending(true);
+    const { data: receiverProfile } = await supabase
+      .from('posts')
+      .select('avatar_url')
+      .eq('user_id', messageTarget.userId)
+      .limit(1)
+      .single();
     const { error } = await supabase.from('messages').insert({
       sender_id: user.id,
       receiver_id: messageTarget.userId,
@@ -673,6 +679,8 @@ export default function App() {
       sender_avatar_url: user.user_metadata?.avatar_url || null,
       content: messageContent.trim(),
       photo_url: messagePhoto || null,
+      receiver_name: messageTarget.nickname,
+      receiver_avatar_url: receiverProfile?.avatar_url || null,
     });
     if (!error) {
       await supabase.from('notifications').insert({
@@ -751,6 +759,8 @@ export default function App() {
       sender_avatar_url: user.user_metadata?.avatar_url || null,
       content: replyContent.trim(),
       photo_url: replyPhoto || null,
+      receiver_name: conversationTarget.nickname,
+      receiver_avatar_url: conversationTarget.avatarUrl || null,
     });
     if (!error) {
       await supabase.from('notifications').insert({
@@ -2965,7 +2975,19 @@ export default function App() {
                     <TouchableOpacity
                       key={post.id}
                       style={{padding:16, borderBottomWidth:1, borderBottomColor:'#f0f0f0'}}
-                      onPress={() => { setShowUserPosts(false); setSelectedPost(post); }}>
+                      onPress={async () => {
+                        setShowUserPosts(false);
+                        let fullPost = posts.find((p: any) => String(p.id) === String(post.id));
+                        if (!fullPost) {
+                          const { data } = await supabase
+                            .from('posts')
+                            .select('*, post_comments(count)')
+                            .eq('id', post.id)
+                            .single();
+                          if (data) fullPost = data;
+                        }
+                        if (fullPost) setSelectedPost(fullPost);
+                      }}>
                       <Text style={{fontWeight:'bold', fontSize:14, marginBottom:4}}>{post.title}</Text>
                       <Text style={{color:'#888', fontSize:12}} numberOfLines={2}>{post.content}</Text>
                       <View style={{flexDirection:'row', justifyContent:'space-between', marginTop:8}}>
