@@ -710,9 +710,14 @@ export default function App() {
     if (data) {
       const conversations: { [key: string]: any } = {};
       data.forEach(msg => {
-        const otherId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-        const otherName = msg.sender_id === user.id ? msg.receiver_name || '상대방' : msg.sender_name;
-        const otherAvatar = msg.sender_id === user.id ? msg.receiver_avatar_url : msg.sender_avatar_url;
+        const isSender = msg.sender_id === user.id;
+        const otherId = isSender ? msg.receiver_id : msg.sender_id;
+        const otherName = isSender
+          ? (msg.receiver_name || '상대방')
+          : (msg.sender_name || '상대방');
+        const otherAvatar = isSender
+          ? (msg.receiver_avatar_url || null)
+          : (msg.sender_avatar_url || null);
         if (!conversations[otherId]) {
           conversations[otherId] = {
             userId: otherId,
@@ -2977,6 +2982,7 @@ export default function App() {
                       style={{padding:16, borderBottomWidth:1, borderBottomColor:'#f0f0f0'}}
                       onPress={async () => {
                         setShowUserPosts(false);
+                        await new Promise(resolve => setTimeout(resolve, 300));
                         let fullPost = posts.find((p: any) => String(p.id) === String(post.id));
                         if (!fullPost) {
                           const { data } = await supabase
