@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 // 네이티브 환경에서 window 폴리필
 if (Platform.OS !== 'web') {
   (global as any).window = {
