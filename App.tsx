@@ -1,3 +1,9 @@
+import React, { useEffect, useState, useCallback, useRef } from 'react'
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  ActivityIndicator, StyleSheet, Modal,
+  Linking, TextInput, Alert, Image, Platform
+} from 'react-native'
 // 네이티브 환경에서 window 폴리필
 if (Platform.OS !== 'web') {
   (global as any).window = {
@@ -10,12 +16,6 @@ if (Platform.OS !== 'web') {
     location: { hash: '' },
   };
 }
-import React, { useEffect, useState, useCallback, useRef } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, StyleSheet, Modal,
-  Linking, TextInput, Alert, Image, Platform
-} from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
