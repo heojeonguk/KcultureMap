@@ -1,3 +1,17 @@
+import { Platform, Alert } from 'react-native';
+
+// 네이티브 환경에서 window 폴리필
+if (Platform.OS !== 'web') {
+  (global as any).window = {
+    alert: (msg: string) => Alert.alert('알림', String(msg)),
+    confirm: (msg: string) => {
+      // confirm은 동기가 안되므로 일단 true 반환 (개별 수정 필요)
+      return true;
+    },
+    addEventListener: () => {},
+    location: { hash: '' },
+  };
+}
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
