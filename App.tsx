@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, StyleSheet, Modal,
-  Linking, TextInput, Alert, Image, Platform
+  Linking, TextInput, Alert, Image, Platform, KeyboardAvoidingView
 } from 'react-native'
 // 네이티브 환경에서 window 폴리필
 if (Platform.OS !== 'web') {
@@ -3194,6 +3194,11 @@ export default function App() {
 
       {showConversation && conversationTarget && (
         <Modal transparent animationType="slide" visible={showConversation}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{flex:1}}
+            keyboardVerticalOffset={60}
+          >
           <View style={{flex:1, backgroundColor:'#f5f5f5'}}>
             <View style={{backgroundColor:'#1a1a2e', padding:20, paddingTop:60, flexDirection:'row', alignItems:'center', gap:12}}>
               <TouchableOpacity onPress={() => setShowConversation(false)}>
@@ -3281,6 +3286,7 @@ export default function App() {
               </View>
             </View>
           </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
 
