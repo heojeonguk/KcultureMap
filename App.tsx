@@ -885,91 +885,97 @@ export default function App() {
     if (data) setAdminPlaces(data);
   };
 
-  const handleDeletePlace = async (placeId: string, placeName: string) => {
-    if (!window.confirm(`"${placeName}" 장소를 삭제하시겠습니까?`)) return;
+  const handleDeletePlace = (placeId: string, placeName: string) => {
+    Alert.alert('확인', `"${placeName}" 장소를 삭제하시겠습니까?`, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: async () => {
+        const { error } = await supabase.from('places').delete().eq('id', placeId);
 
-    const { error } = await supabase.from('places').delete().eq('id', placeId);
+        if (!error) {
+          const { data: updatedReports, error: updateError } = await supabase
+            .from('place_reports')
+            .update({ status: 'deleted' })
+            .eq('name', placeName)
+            .eq('status', 'approved')
+            .select('user_id');
 
-    if (!error) {
-      const { data: updatedReports, error: updateError } = await supabase
-        .from('place_reports')
-        .update({ status: 'deleted' })
-        .eq('name', placeName)
-        .eq('status', 'approved')
-        .select('user_id');
+          console.log('updated reports:', updatedReports, updateError);
 
-      console.log('updated reports:', updatedReports, updateError);
+          if (updatedReports && updatedReports.length > 0) {
+            for (const report of updatedReports) {
+              if (report.user_id) {
+                await supabase.from('notifications').insert({
+                  user_id: report.user_id,
+                  type: 'comment',
+                  message: `📌 "${placeName}" 장소가 관리자에 의해 삭제됐습니다.`,
+                  from_user_name: 'K컬처MAP 관리자',
+                  from_avatar_url: null,
+                });
+              }
+            }
+          }
 
-      if (updatedReports && updatedReports.length > 0) {
-        for (const report of updatedReports) {
+          setAdminPlaces(prev => prev.filter(p => p.id !== placeId));
+          Alert.alert('삭제됐습니다.');
+        } else {
+          Alert.alert('삭제 오류', error.message);
+        }
+      }}
+    ]);
+  };
+
+  const handleApproveReport = (report: any) => {
+    Alert.alert('확인', `"${report.name}" 장소를 등록하시겠습니까?`, [
+      { text: '취소', style: 'cancel' },
+      { text: '등록', onPress: async () => {
+        const { error } = await supabase.from('places').insert({
+          name: report.name,
+          name_en: report.name,
+          city: report.city,
+          district: report.city,
+          category: report.category === '맛집' ? 'food' :
+                    report.category === '카페' ? 'cafe' :
+                    report.category === '명소' ? 'spot' :
+                    report.category === '쇼핑' ? 'shopping' : 'activity',
+          address: report.address,
+          photo_url: report.photo_url || null,
+          rating: 0,
+          emoji: report.category === '맛집' ? '🍽️' :
+                 report.category === '카페' ? '☕' :
+                 report.category === '명소' ? '📍' :
+                 report.category === '쇼핑' ? '🛍️' : '🎯',
+          featured: false,
+          is_open: true,
+          lat: null,
+          lng: null,
+          reported_by: report.user_name || null,
+        });
+
+        if (!error) {
+          await supabase.from('place_reports').update({ status: 'approved' }).eq('id', report.id);
+
           if (report.user_id) {
             await supabase.from('notifications').insert({
               user_id: report.user_id,
               type: 'comment',
-              message: `📌 "${placeName}" 장소가 관리자에 의해 삭제됐습니다.`,
+              message: `📌 "${report.name}" 장소가 K컬처MAP에 등록됐습니다! 감사합니다 🎉`,
               from_user_name: 'K컬처MAP 관리자',
               from_avatar_url: null,
             });
           }
+
+          setPlaceReports(prev => prev.map(r =>
+            r.id === report.id ? { ...r, status: 'approved' } : r
+          ));
+          setMyReports(prev => prev.map(r =>
+            r.id === report.id ? { ...r, status: 'approved' } : r
+          ));
+          Alert.alert('장소가 등록됐습니다!');
+        } else {
+          Alert.alert('오류', error.message);
         }
-      }
-
-      setAdminPlaces(prev => prev.filter(p => p.id !== placeId));
-      window.alert('삭제됐습니다.');
-    } else {
-      window.alert('삭제 오류: ' + error.message);
-    }
-  };
-
-  const handleApproveReport = async (report: any) => {
-    if (!window.confirm(`"${report.name}" 장소를 등록하시겠습니까?`)) return;
-
-    const { error } = await supabase.from('places').insert({
-      name: report.name,
-      name_en: report.name,
-      city: report.city,
-      district: report.city,
-      category: report.category === '맛집' ? 'food' :
-                report.category === '카페' ? 'cafe' :
-                report.category === '명소' ? 'spot' :
-                report.category === '쇼핑' ? 'shopping' : 'activity',
-      address: report.address,
-      photo_url: report.photo_url || null,
-      rating: 0,
-      emoji: report.category === '맛집' ? '🍽️' :
-             report.category === '카페' ? '☕' :
-             report.category === '명소' ? '📍' :
-             report.category === '쇼핑' ? '🛍️' : '🎯',
-      featured: false,
-      is_open: true,
-      lat: null,
-      lng: null,
-      reported_by: report.user_name || null,
-    });
-
-    if (!error) {
-      await supabase.from('place_reports').update({ status: 'approved' }).eq('id', report.id);
-
-      if (report.user_id) {
-        await supabase.from('notifications').insert({
-          user_id: report.user_id,
-          type: 'comment',
-          message: `📌 "${report.name}" 장소가 K컬처MAP에 등록됐습니다! 감사합니다 🎉`,
-          from_user_name: 'K컬처MAP 관리자',
-          from_avatar_url: null,
-        });
-      }
-
-      setPlaceReports(prev => prev.map(r =>
-        r.id === report.id ? { ...r, status: 'approved' } : r
-      ));
-      setMyReports(prev => prev.map(r =>
-        r.id === report.id ? { ...r, status: 'approved' } : r
-      ));
-      window.alert('장소가 등록됐습니다!');
-    } else {
-      window.alert('오류: ' + error.message);
-    }
+      }}
+    ]);
   };
 
   const handleRejectReport = async () => {
@@ -2068,9 +2074,12 @@ export default function App() {
                             <Text style={{color:'#1565C0',fontSize:12}}>✏️ 수정</Text>
                           </TouchableOpacity>
                           <TouchableOpacity onPress={()=>{
-                            if(window.confirm('리뷰를 삭제하시겠습니까?')) {
-                              supabase.from('reviews').delete().eq('id',review.id).then(()=>loadMyData())
-                            }
+                            Alert.alert('확인', '리뷰를 삭제하시겠습니까?', [
+                              { text: '취소', style: 'cancel' },
+                              { text: '삭제', style: 'destructive', onPress: () => {
+                                supabase.from('reviews').delete().eq('id',review.id).then(()=>loadMyData())
+                              }}
+                            ]);
                           }}>
                             <Text style={{color:'#C8102E',fontSize:12}}>🗑 삭제</Text>
                           </TouchableOpacity>
