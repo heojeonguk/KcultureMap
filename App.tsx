@@ -549,45 +549,88 @@ export default function App() {
   }
 
   const handleProfileImageUpload = async () => {
-    if (typeof document === 'undefined') return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file || !user) return;
-      const ext = file.name.split('.').pop();
-      const filePath = `profiles/${user.id}`;
-      const { error } = await supabase.storage.from('community-photos').upload(filePath, file, { upsert: true });
-      if (!error) {
-        const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
-        setProfileImage(data.publicUrl);
-        await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
-        const { data: { user: updatedUser } } = await supabase.auth.getUser();
-        if (updatedUser) setUser(updatedUser);
-        await supabase.from('posts').update({ avatar_url: data.publicUrl }).eq('user_id', user.id);
-      }
-    };
-    input.click();
+    if (Platform.OS === 'web') {
+      if (typeof document === 'undefined') return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0];
+        if (!file || !user) return;
+        const filePath = `profiles/${user.id}`;
+        const { error } = await supabase.storage.from('community-photos').upload(filePath, file, { upsert: true });
+        if (!error) {
+          const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+          setProfileImage(data.publicUrl);
+          await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
+          const { data: { user: updatedUser } } = await supabase.auth.getUser();
+          if (updatedUser) setUser(updatedUser);
+          await supabase.from('posts').update({ avatar_url: data.publicUrl }).eq('user_id', user.id);
+        }
+      };
+      input.click();
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { Alert.alert('', '사진 접근 권한이 필요합니다'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (result.canceled || !user) return;
+    const uri = result.assets[0].uri;
+    const filePath = `profiles/${user.id}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const { error } = await supabase.storage.from('community-photos').upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
+    if (!error) {
+      const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+      setProfileImage(data.publicUrl);
+      await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
+      const { data: { user: updatedUser } } = await supabase.auth.getUser();
+      if (updatedUser) setUser(updatedUser);
+      await supabase.from('posts').update({ avatar_url: data.publicUrl }).eq('user_id', user.id);
+    }
   };
 
   const handleReportPhotoUpload = async () => {
-    if (typeof document === 'undefined') return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const ext = file.name.split('.').pop();
-      const filePath = `reports/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('community-photos').upload(filePath, file);
-      if (!error) {
-        const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
-        setReportPhoto(data.publicUrl);
-      }
-    };
-    input.click();
+    if (Platform.OS === 'web') {
+      if (typeof document === 'undefined') return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const ext = file.name.split('.').pop();
+        const filePath = `reports/${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from('community-photos').upload(filePath, file);
+        if (!error) {
+          const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+          setReportPhoto(data.publicUrl);
+        }
+      };
+      input.click();
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { Alert.alert('', '사진 접근 권한이 필요합니다'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const uri = result.assets[0].uri;
+    const filePath = `reports/${Date.now()}.jpg`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const { error } = await supabase.storage.from('community-photos').upload(filePath, blob, { contentType: 'image/jpeg' });
+    if (!error) {
+      const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+      setReportPhoto(data.publicUrl);
+    }
   };
 
   const handleReportSubmit = async () => {
@@ -794,22 +837,42 @@ export default function App() {
   };
 
   const handleMessagePhotoUpload = async (setPhoto: (url: string) => void) => {
-    if (typeof document === 'undefined') return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const ext = file.name.split('.').pop();
-      const filePath = `messages/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('community-photos').upload(filePath, file);
-      if (!error) {
-        const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
-        setPhoto(data.publicUrl);
-      }
-    };
-    input.click();
+    if (Platform.OS === 'web') {
+      if (typeof document === 'undefined') return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const ext = file.name.split('.').pop();
+        const filePath = `messages/${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from('community-photos').upload(filePath, file);
+        if (!error) {
+          const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+          setPhoto(data.publicUrl);
+        }
+      };
+      input.click();
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { Alert.alert('', '사진 접근 권한이 필요합니다'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const uri = result.assets[0].uri;
+    const filePath = `messages/${Date.now()}.jpg`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const { error } = await supabase.storage.from('community-photos').upload(filePath, blob, { contentType: 'image/jpeg' });
+    if (!error) {
+      const { data } = supabase.storage.from('community-photos').getPublicUrl(filePath);
+      setPhoto(data.publicUrl);
+    }
   };
 
   const fetchAdminPlaces = async (keyword: string) => {
@@ -1436,7 +1499,7 @@ export default function App() {
                         <Text style={{fontSize:13, fontWeight:'600', color:'#1a1a1a'}} numberOfLines={1}>{post.title}</Text>
                         <Text style={{fontSize:11, color:'#aaa', marginTop:2}}>{post.user_name} · 👍 {post.likes} · 💬 {post.post_comments?.[0]?.count??0}</Text>
                       </View>
-                      {post.photo_url&&<img src={post.photo_url} style={{width:44, height:44, borderRadius:6, objectFit:'cover' as any, marginLeft:8}}/>}
+                      {post.photo_url&&<Image source={{uri:post.photo_url}} style={{width:44, height:44, borderRadius:6, resizeMode:'cover', marginLeft:8}}/>}
                     </TouchableOpacity>
                   ))
                 )}
@@ -1629,7 +1692,7 @@ export default function App() {
                       <Text style={{fontSize:13, fontWeight:'600', color:'#1a1a1a'}} numberOfLines={1}>{post.title}</Text>
                       <Text style={{fontSize:11, color:'#aaa', marginTop:2}}>{post.user_name} · 👍 {post.likes} · 💬 {post.post_comments?.[0]?.count??0}</Text>
                     </View>
-                    {post.photo_url&&<img src={post.photo_url} style={{width:44, height:44, borderRadius:6, objectFit:'cover' as any, marginLeft:8}}/>}
+                    {post.photo_url&&<Image source={{uri:post.photo_url}} style={{width:44, height:44, borderRadius:6, resizeMode:'cover', marginLeft:8}}/>}
                   </TouchableOpacity>
                 ))
               )}
@@ -1676,10 +1739,10 @@ export default function App() {
                     </View>
                     <Text style={s.postTitle}>{post.title}</Text>
                     {/* 미리보기 이미지 */}
-                    {post.photo_url&&<img
-                      src={post.photo_url}
-                      style={{width:'100%', height:200, objectFit:'cover' as any, borderRadius:8, cursor:'pointer', marginTop:8, marginBottom:4, display:'block'}}
-                      onClick={()=>setPhotoViewer(post.photo_url)}
+                    {post.photo_url&&<Image
+                      source={{uri:post.photo_url}}
+                      style={{width:'100%' as any, height:200, borderRadius:8, marginTop:8, marginBottom:4, resizeMode:'cover'}}
+                      onTouchEnd={()=>setPhotoViewer(post.photo_url)}
                     />}
                     <Text style={s.postContent} numberOfLines={2}>{post.content}</Text>
                     <View style={s.postFooter}>
@@ -2200,10 +2263,10 @@ export default function App() {
                   </View>
                   <Text style={s.postDetailTitle}>{selectedPost.title}</Text>
                   {/* 상세 이미지 */}
-                  {selectedPost.photo_url&&<img
-                    src={selectedPost.photo_url}
-                    style={{width:'100%', height:240, objectFit:'cover' as any, borderRadius:8, cursor:'pointer', marginBottom:8, display:'block'}}
-                    onClick={()=>setPhotoViewer(selectedPost.photo_url)}
+                  {selectedPost.photo_url&&<Image
+                    source={{uri:selectedPost.photo_url}}
+                    style={{width:'100%' as any, height:240, borderRadius:8, marginBottom:8, resizeMode:'cover'}}
+                    onTouchEnd={()=>setPhotoViewer(selectedPost.photo_url)}
                   />}
                   <Text style={s.postDetailContent}>{selectedPost.content}</Text>
                   <View style={{flexDirection:'row',gap:10,marginTop:12,flexWrap:'wrap'}}>
