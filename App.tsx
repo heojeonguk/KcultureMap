@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, StyleSheet, Modal,
-  Linking, TextInput, Alert, Image, Platform, KeyboardAvoidingView
+  Linking, TextInput, Alert, Image, Platform, KeyboardAvoidingView,
+  BackHandler, FlatList
 } from 'react-native'
 // 네이티브 환경에서 window 폴리필
 if (Platform.OS !== 'web') {
@@ -385,6 +386,22 @@ export default function App() {
       window.addEventListener('scroll', () => {});
     }
   }, [])
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (showConversation) {
+        setShowConversation(false);
+        return true;
+      }
+      if (showMyMessages) {
+        setShowMyMessages(false);
+        return true;
+      }
+      return false;
+    });
+    return () => handler.remove();
+  }, [showConversation, showMyMessages]);
 
   const openEditModal = (post:any) => {
     setEditingPost(post)
@@ -1547,32 +1564,40 @@ export default function App() {
                   </>}
                   <Text style={s.secTitle}>📋 {L.all_list}</Text>
                   {places.length===0&&<Text style={s.emptyText}>해당 조건의 장소가 없습니다</Text>}
-                  {places.filter(p=>!p.featured).map((p:any)=>(
-                    <TouchableOpacity key={p.id} style={s.listCard} onPress={()=>openDetail(p)}>
-                      <View style={[s.listThumb,{backgroundColor:CAT_BG[p.category]||'#f5f0e8', overflow:'hidden'}]}>
-                        {p.photo_url ? (
-                          <Image source={{uri: p.photo_url}} style={{width:56, height:56, borderRadius:10}} resizeMode="cover" />
-                        ) : (
-                          <Text style={{fontSize:26}}>{p.emoji}</Text>
-                        )}
-                      </View>
-                      <View style={s.listInfo}>
-                        <Text style={s.listName}>{p.name}</Text>
-                        {p.reported_by && <Text style={{fontSize:11, color:'#E8751A', marginTop:2}}>📌 {p.reported_by} 제보</Text>}
-                        <Text style={s.listAddr}>{p.address}{p.district?' · '+p.district:''}</Text>
-                        <View style={s.tagRow}>
-                          <View style={[s.tag,p.is_open?s.tagOpen:s.tagClosed]}><Text style={[s.tagText,{color:p.is_open?'#166534':'#991b1b'}]}>{p.is_open?L.open:L.closed}</Text></View>
-                          {p.hours&&<View style={s.tag}><Text style={s.tagText}>{p.hours}</Text></View>}
-                          {p.price_range&&<View style={s.tag}><Text style={s.tagText}>{p.price_range}</Text></View>}
+                  <FlatList
+                    data={places.filter((p:any)=>!p.featured)}
+                    keyExtractor={(p:any)=>String(p.id)}
+                    scrollEnabled={false}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
+                    renderItem={({item:p})=>(
+                      <TouchableOpacity style={s.listCard} onPress={()=>openDetail(p)}>
+                        <View style={[s.listThumb,{backgroundColor:CAT_BG[p.category]||'#f5f0e8', overflow:'hidden'}]}>
+                          {p.photo_url ? (
+                            <Image source={{uri: p.photo_url}} style={{width:56, height:56, borderRadius:10}} resizeMode="cover" />
+                          ) : (
+                            <Text style={{fontSize:26}}>{p.emoji}</Text>
+                          )}
                         </View>
-                      </View>
-                      <View style={s.listRight}>
-                        <View style={s.ratingChip}><Text style={s.ratingChipText}>⭐{p.rating}</Text></View>
-                        <TouchableOpacity onPress={()=>toggleSave(p.id)}><Text style={[s.heartSmall,saved.includes(p.id)&&s.heartSmallSaved]}>♥</Text></TouchableOpacity>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                  <View style={{height:20}}/>
+                        <View style={s.listInfo}>
+                          <Text style={s.listName}>{p.name}</Text>
+                          {p.reported_by && <Text style={{fontSize:11, color:'#E8751A', marginTop:2}}>📌 {p.reported_by} 제보</Text>}
+                          <Text style={s.listAddr}>{p.address}{p.district?' · '+p.district:''}</Text>
+                          <View style={s.tagRow}>
+                            <View style={[s.tag,p.is_open?s.tagOpen:s.tagClosed]}><Text style={[s.tagText,{color:p.is_open?'#166534':'#991b1b'}]}>{p.is_open?L.open:L.closed}</Text></View>
+                            {p.hours&&<View style={s.tag}><Text style={s.tagText}>{p.hours}</Text></View>}
+                            {p.price_range&&<View style={s.tag}><Text style={s.tagText}>{p.price_range}</Text></View>}
+                          </View>
+                        </View>
+                        <View style={s.listRight}>
+                          <View style={s.ratingChip}><Text style={s.ratingChipText}>⭐{p.rating}</Text></View>
+                          <TouchableOpacity onPress={()=>toggleSave(p.id)}><Text style={[s.heartSmall,saved.includes(p.id)&&s.heartSmallSaved]}>♥</Text></TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                    ListFooterComponent={<View style={{height:20}}/>}
+                  />
                 </View>
               )}
             </ScrollView>
@@ -1745,11 +1770,12 @@ export default function App() {
                     </View>
                     <Text style={s.postTitle}>{post.title}</Text>
                     {/* 미리보기 이미지 */}
-                    {post.photo_url&&<Image
-                      source={{uri:post.photo_url}}
-                      style={{width:'100%' as any, height:200, borderRadius:8, marginTop:8, marginBottom:4, resizeMode:'cover'}}
-                      onTouchEnd={()=>setPhotoViewer(post.photo_url)}
-                    />}
+                    {post.photo_url&&<TouchableOpacity onPress={()=>setPhotoViewer(post.photo_url)}>
+                      <Image
+                        source={{uri:post.photo_url}}
+                        style={{width:'100%' as any, height:200, borderRadius:8, marginTop:8, marginBottom:4, resizeMode:'cover'}}
+                      />
+                    </TouchableOpacity>}
                     <Text style={s.postContent} numberOfLines={2}>{post.content}</Text>
                     <View style={s.postFooter}>
                       <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(post)}><Text style={s.likeBtnText}>👍 {post.likes}</Text></TouchableOpacity>
@@ -2239,6 +2265,7 @@ export default function App() {
           setEditingPost(null)
         }}>
           {selectedPost&&(
+            <KeyboardAvoidingView behavior="padding" style={{flex:1}} keyboardVerticalOffset={0}>
             <SafeAreaView style={{flex:1,backgroundColor:'#F8F5F0'}}>
               <View style={s.writeModalHeader}>
                 <TouchableOpacity onPress={()=>{
@@ -2272,11 +2299,12 @@ export default function App() {
                   </View>
                   <Text style={s.postDetailTitle}>{selectedPost.title}</Text>
                   {/* 상세 이미지 */}
-                  {selectedPost.photo_url&&<Image
-                    source={{uri:selectedPost.photo_url}}
-                    style={{width:'100%' as any, height:240, borderRadius:8, marginBottom:8, resizeMode:'cover'}}
-                    onTouchEnd={()=>setPhotoViewer(selectedPost.photo_url)}
-                  />}
+                  {selectedPost.photo_url&&<TouchableOpacity onPress={()=>setPhotoViewer(selectedPost.photo_url)}>
+                    <Image
+                      source={{uri:selectedPost.photo_url}}
+                      style={{width:'100%' as any, height:240, borderRadius:8, marginBottom:8, resizeMode:'cover'}}
+                    />
+                  </TouchableOpacity>}
                   <Text style={s.postDetailContent}>{selectedPost.content}</Text>
                   <View style={{flexDirection:'row',gap:10,marginTop:12,flexWrap:'wrap'}}>
                     <TouchableOpacity style={s.likeBtn} onPress={()=>likePost(selectedPost)}><Text style={s.likeBtnText}>👍 {L.likes} {selectedPost.likes}</Text></TouchableOpacity>
@@ -2365,6 +2393,7 @@ export default function App() {
                 </TouchableOpacity>
               </View>
             </SafeAreaView>
+            </KeyboardAvoidingView>
           )}
         </Modal>
 
@@ -2627,7 +2656,7 @@ export default function App() {
                     placeholderTextColor="#bbb"
                   />
                   <TextInput
-                    style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                    style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12,color:'#000'}}
                     placeholder="비밀번호 (6자 이상)"
                     value={authPassword}
                     onChangeText={setAuthPassword}
@@ -2669,7 +2698,7 @@ export default function App() {
               <Text style={{fontSize:24,textAlign:'center',marginBottom:8}}>🔐</Text>
               <Text style={{fontSize:18,fontWeight:'700',textAlign:'center',marginBottom:24}}>새 비밀번호를 입력해주세요</Text>
               <TextInput
-                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12,color:'#000'}}
                 placeholder="새 비밀번호 (6자 이상)"
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -2677,7 +2706,7 @@ export default function App() {
                 placeholderTextColor="#bbb"
               />
               <TextInput
-                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12}}
+                style={{borderWidth:1,borderColor:'#ddd',borderRadius:10,padding:14,fontSize:15,marginBottom:12,color:'#000'}}
                 placeholder="비밀번호 확인"
                 value={newPasswordConfirm}
                 onChangeText={setNewPasswordConfirm}
@@ -3195,9 +3224,9 @@ export default function App() {
       {showConversation && conversationTarget && (
         <Modal transparent animationType="slide" visible={showConversation}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior="padding"
             style={{flex:1}}
-            keyboardVerticalOffset={60}
+            keyboardVerticalOffset={0}
           >
           <View style={{flex:1, backgroundColor:'#f5f5f5'}}>
             <View style={{backgroundColor:'#1a1a2e', padding:20, paddingTop:60, flexDirection:'row', alignItems:'center', gap:12}}>
@@ -3253,7 +3282,7 @@ export default function App() {
               })}
             </ScrollView>
 
-            <View style={{backgroundColor:'#fff'}}>
+            <View style={{backgroundColor:'#fff', paddingBottom: Platform.OS === 'android' ? 8 : 0}}>
               {replyPhoto && (
                 <View style={{paddingHorizontal:12, paddingBottom:4}}>
                   <View>
@@ -3446,7 +3475,7 @@ const s = StyleSheet.create({
   replyLine:{fontSize:16,color:'#ddd',marginRight:4,lineHeight:28},
   replyToBar:{backgroundColor:'#f0f4ff',paddingHorizontal:16,paddingVertical:8,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
   replyToText:{fontSize:12,color:'#1565C0',fontWeight:'600'},
-  commentInputRow:{flexDirection:'row',gap:8,padding:12,backgroundColor:'#fff',borderTopWidth:0.5,borderTopColor:'#eee'},
+  commentInputRow:{flexDirection:'row',gap:8,padding:12,backgroundColor:'#fff',borderTopWidth:0.5,borderTopColor:'#eee',paddingBottom:Platform.OS==='android'?16:12},
   commentInput:{flex:1,backgroundColor:'#F8F5F0',borderRadius:20,paddingHorizontal:14,paddingVertical:10,fontSize:13,color:'#0D1B2A',borderWidth:1,borderColor:'#eee'},
   commentSubmitBtn:{width:40,height:40,borderRadius:20,backgroundColor:'#C8102E',alignItems:'center',justifyContent:'center'},
   profileHeader:{backgroundColor:'#0D1B2A',padding:20,alignItems:'center'},
