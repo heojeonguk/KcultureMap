@@ -24,8 +24,21 @@
         "monochromeImage": "./assets/adaptive-icon.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "사진 라이브러리에 접근하여 사진을 업로드할 수 있도록 허용해주세요."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png",
       "name": "K컬처MAP - 한국 문화 여행 가이드",
